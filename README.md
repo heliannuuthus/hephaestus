@@ -50,7 +50,6 @@ jobs:
     with:
       version: ${{ needs.build.outputs.version }}
       workdir: "tests/rust/"
-      target: "tests/rust/target/"
 ```
 
 ### gradle-cloud
@@ -92,7 +91,6 @@ jobs:
     with:
       workdir: "tests/gradle-cloud/"
       version: ${{ needs.build.outputs.version }}
-      target: "tests/gradle-cloud/build"
 ```
 
 ### gradle-library
@@ -151,6 +149,10 @@ on:
   pull_request_target:
     types: [closed]
 
+env:
+  GOOS: linux
+  GOARCH: amd64
+
 jobs:
   setup:
     uses: heliannuuthus/integrate-deploy/.github/workflows/call-golang-setup.yml
@@ -170,9 +172,7 @@ jobs:
     uses: heliannuuthus/integrate-deploy/.github/workflows/call-golang-build.yml
     with:
       workdir: "tests/golang/"
-      GOOS: linux
-      GOARCH: amd64
-      ENTRANCE: cmd/main.go
+      entrance: cmd/main.go
 
   containeraized:
     if: ${{ always() && github.event.pull_request.merged }}
@@ -182,9 +182,7 @@ jobs:
       packages: write
     uses: heliannuuthus/integrate-deploy/.github/workflows/call-containerize.yml
     with:
-      version: ${{ needs.build.outputs.version }}
       workdir: "tests/golang/"
-      target: "tests/golang/build"
 ```
 
 ### node

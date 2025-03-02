@@ -15,11 +15,19 @@ steps:
 {% endset %}
 
 {% set env -%}
+{% raw -%}
 - id: environments
   name: environments
   run: |
     echo "timestamp=$(date +%Y%m%d | cut -c 3-8)" >> "$GITHUB_OUTPUT"
     echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+    if [[ "${{ github.ref }}" =~ ^refs/tags/ ]]; then
+      version=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "0.1.0")
+    else
+      version="0.1.0"
+    fi
+    echo "version=$version" >> "$GITHUB_OUTPUT"
+{% endraw %}
 {% endset %}
 
 {% set meta -%}
@@ -30,8 +38,8 @@ steps:
   with:
     images: ghcr.io/${{ github.repository }}
     tags: |
-      type=semver,enable=${{ github.ref == format('refs/heads/{0}', 'master') }},pattern=${{ inputs.version }}-${{ steps.environments.outputs.timestamp }}rc-${{ steps.environments.outputs.short_sha }},value=${{ inputs.version || 'v0.0.1' }}
-      type=semver,enable=${{ github.ref != format('refs/heads/{0}', 'master') }},pattern=${{ inputs.version }}-${{ steps.environments.outputs.timestamp }}alpha-${{ steps.environments.outputs.short_sha }},value=${{ inputs.version || 'v0.0.1'  }}
+      type=semver,enable=${{ github.ref == format('refs/heads/{0}', 'master') }},pattern=${{ steps.environments.outputs.version }}-${{ steps.environments.outputs.timestamp }}rc-${{ steps.environments.outputs.short_sha }},value=${{ steps.environments.outputs.version || '0.0.1' }}
+      type=semver,enable=${{ github.ref != format('refs/heads/{0}', 'master') }},pattern=${{ steps.environments.outputs.version }}-${{ steps.environments.outputs.timestamp }}alpha-${{ steps.environments.outputs.short_sha }},value=${{ steps.environments.outputs.version || '0.0.1'  }}
 {% endraw %}
 {% endset %}
 
@@ -51,7 +59,7 @@ steps:
 - name: push github
   uses: docker/build-push-action@v5
   with:
-    context: ${{ inputs.workdir }}
+    context: .
     push: true
     tags: ${{ steps.meta.outputs.tags }}
     labels: ${{ steps.meta.outputs.labels }}

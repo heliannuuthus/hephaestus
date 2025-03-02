@@ -7,10 +7,6 @@ on:
         type: "string"
         description: "Specify all of gradle steps where are run"
 
-    outputs:
-      version:
-        value: ${{ jobs.build.outputs.version }}
-        description: "major version"
 
 jobs:
   lint:
@@ -31,18 +27,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
+          gradle-version: "8.6"
 
-      - name: build and test
-        run: gradle clean build
-        env:
-          GPR_USER: ${{ secrets.user }}
-          GPR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: lint
+        run: gradle clean spotlessCheck
 
   build:
     needs: [lint]
-    outputs:
-      project: ${{ steps.environments.outputs.project }}
-      version: ${{ steps.environments.outputs.version }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -60,15 +51,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
-
-      - id: environments
-        name: environments
-        run: |
-          echo "
-          project=$(gradle name -q | awk 'NR==1 {print}')
-          version=$(gradle version -q | awk 'NR==1 {print}')
-          " >> "$GITHUB_OUTPUT"
-        shell: bash
+          gradle-version: "8.6"
 
       - name: build and test
         run: gradle clean build

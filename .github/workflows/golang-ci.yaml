@@ -14,7 +14,7 @@ jobs:
       packages: write
     with:
       workdir: "tests/golang/"
-      ENTRANCE: cmd/main.go
+      entrance: cmd/main.go
 
   containerize:
     needs: ["project"]
@@ -24,5 +24,3 @@ jobs:
       packages: write
     with:
       workdir: "tests/golang/"
-      version: ${{ needs.project.outputs.version }}
-      targets: "tests/golang/build"

@@ -22,5 +22,3 @@ jobs:
       packages: write
     with:
       workdir: "tests/rust/"
-      version: ${{ needs.project.outputs.version }}
-      targets: "tests/rust/target"

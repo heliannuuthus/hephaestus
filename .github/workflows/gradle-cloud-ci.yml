@@ -23,5 +23,3 @@ jobs:
       packages: write
     with:
       workdir: "tests/gradle-cloud/"
-      version: ${{ needs.project.outputs.version }}
-      targets: "tests/gradle-cloud/build"

@@ -8,29 +8,14 @@
   uses: gradle/actions/setup-gradle@v4
   with:
     gradle-home-cache-cleanup: true
-{% endraw %}
-{%- endset %}
-
-{% set env -%}
-{% raw -%}
-- id: environments
-  name: environments
-  run: |
-    echo "
-    project=$(gradle name -q | awk 'NR==1 {print}')
-    version=$(gradle version -q | awk 'NR==1 {print}')
-    " >> "$GITHUB_OUTPUT"
-  shell: bash
+    gradle-version: "8.6"
 {% endraw %}
 {%- endset %}
 
 {% set lint -%}
 {% raw -%}
-- name: build and test
-  run: gradle clean build
-  env:
-    GPR_USER: ${{ secrets.user }}
-    GPR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+- name: lint
+  run: gradle clean spotlessCheck
 {% endraw %}
 {%- endset %}
 

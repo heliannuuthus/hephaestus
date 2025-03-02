@@ -7,19 +7,6 @@
         "desc": "Specify containerize base dir",
         "type": "string",
         "required": "false"
-      },
-      {
-        "name": "version",
-        "default": "./",
-        "desc": "image marjor version, complete: ${major}-${timestamp}rc/alpha-short_commit_hash",
-        "type": "string",
-        "required": "true"
-      },
-      {
-        "name": "targets",
-        "desc": "targets artifact download paths",
-        "type": "string",
-        "required": "true"
       }
     ],
     "secrets": [],

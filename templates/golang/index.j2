@@ -1,6 +1,6 @@
 {%- import 'variables.j2' as variables -%}
 {%- import 'actions.j2' as actions  -%}
-{%- from 'golang/extra.j2' import setup, init, cache, env, lint, sec_scan, build -%}
+{%- from 'golang/extra.j2' import setup, init, cache, lint, sec_scan, build -%}
 on:
   workflow_call:
     {% if data.variables.inputs | length > 0 %}
@@ -39,14 +39,8 @@ jobs:
       {{ actions.upload(data.security.upload.name, data.security.upload.paths) | indent(6) }}
   build:
     needs: [lint, setup, security]
-    outputs:
-    {%- raw %}
-      project: ${{ steps.environments.outputs.project }}
-      version: ${{ steps.environments.outputs.version }}
-    {% endraw %}
     {{ actions.init | indent(4) }}
       {{ init | indent(6) }}
       {{ actions.download(data.build.download.name, data.build.download.paths) | indent(6) }}
-      {{ env | indent(6) }}
       {{ build | indent(6) }}
       {{ actions.upload(data.build.upload.name, data.build.upload.paths) | indent(6) }}

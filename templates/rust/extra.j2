@@ -27,26 +27,6 @@
 {% endraw %}
 {%- endset %}
 
-{% set env -%}
-{% raw -%}
-- id: environments
-  name: environments
-  run: |
-    opt="--no-deps --format-version 1"
-    if [ -d "src-tauri" ]; then
-      opt="$opt --manifest-path src-tauri/Cargo.toml"
-    fi
-    version=$(git describe --tags --abbrev=0)
-    version=${version#v}
-    version="$version-$(cargo metadata $opt | jq -r '.packages[0].version')"
-    echo "
-    project=$(cargo metadata $opt | jq -r '.packages[0].name')
-    version=$version
-    " >> "$GITHUB_OUTPUT"
-  shell: bash
-{% endraw %}
-{%- endset %}
-
 {% set lint -%}
 - name: lint
   run: |

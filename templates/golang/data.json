@@ -9,21 +9,14 @@
         "required": "false"
       },
       {
-        "name": "GOOS",
-        "default": "linux",
-        "desc": "GOOS target os",
+        "name": "goversion",
+        "default": "1.23.6",
+        "desc": "Specify go version",
         "type": "string",
         "required": "false"
       },
       {
-        "name": "GOARCH",
-        "default": "amd64",
-        "desc": "GOARCH arch",
-        "type": "string",
-        "required": "false"
-      },
-      {
-        "name": "ENTRANCE",
+        "name": "entrance",
         "default": "./main.go",
         "desc": "Specify main.go relative path",
         "type": "string",
@@ -31,13 +24,7 @@
       }
     ],
     "secrets": [],
-    "outputs": [
-      {
-        "name": "version",
-        "desc": "major version",
-        "value": "jobs.build.outputs.version"
-      }
-    ]
+    "outputs": []
   },
   "lint": {},
   "security": {

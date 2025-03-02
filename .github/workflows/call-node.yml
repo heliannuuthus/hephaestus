@@ -155,9 +155,6 @@ jobs:
 
   build:
     needs: [lint]
-    outputs:
-      project: ${{ steps.environments.outputs.project }}
-      version: ${{ steps.environments.outputs.version }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -225,15 +222,6 @@ jobs:
       - name: test
         if: ${{ inputs.test }}
         run: pnpm ${{ inputs.test }}
-
-      - id: environments
-        name: environments
-        run: |
-          echo "
-          project=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
-          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-          " >> "$GITHUB_OUTPUT"
-        shell: bash
 
       
       - name: build

@@ -2,20 +2,18 @@
 {% raw -%}
 - uses: actions/setup-go@v5
   with:
-    go-version: '1.20'
-    cache: false
+    go-version: ${{ inputs.goversion }}
+    cache: true
+    cache-dependency-path: '**/go.sum'
 
 - name: restore golang cache
   uses: actions/cache/restore@v4
   id: cache-restore-golang
-  env:
-    cache-name: cache-gomod
   with:
-    path: |
-      ~/go
-    key: ${{ runner.os }}-golang-store-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
+    path: ~/go
+    key: ${{ runner.os }}-golang-store-cache-gomod-${{ hashFiles('**/go.sum') }}
     restore-keys: |
-      ${{ runner.os }}-golang-store-${{ env.cache-name }}-
+      ${{ runner.os }}-golang-store-cache-gomod-
 
 - name: setup
   if: ${{ steps.cache-restore-golang.outputs.cache-hit != 'true'}}
@@ -24,33 +22,14 @@
     curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.18.2
     go install gotest.tools/gotestsum@v1.12.0
 
-- name: cache gomod cache
+- name: save golang cache
   if: ${{ steps.cache-restore-golang.outputs.cache-hit != 'true'}}
   id: cache-save-golang
   uses: actions/cache/save@v4
-  env:
-    cache-name: cache-gomod
   with:
     path: |
       ~/go
-    key: ${{ runner.os }}-golang-store-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-{% endraw %}
-{%- endset %}
-
-{% set env -%}
-{% raw -%}
-- id: environments
-  name: environments
-  run: |
-    version=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.1.0")
-    version=${version#v}
-    version="$version-$(git rev-parse --short HEAD)"
-    project=$(go list -m)
-    echo "
-    project=${project##*/}
-    version=$version
-    " >> "$GITHUB_OUTPUT"
-  shell: bash
+    key: ${{ runner.os }}-golang-store-cache-gomod-${{ hashFiles('**/go.sum') }}
 {% endraw %}
 {%- endset %}
 
@@ -72,27 +51,18 @@
 {% set build -%}
 {% raw -%}
 - name: build binary
+  timeout-minutes: 10
   run: |
     mkdir -p build
-    CGO_ENABLE=0 GOOS=${{ inputs.GOOS }} GOARCH=${{ inputs.GOARCH }} go build -a -o build/${{ steps.environments.outputs.project }} ${{ inputs.ENTRANCE }}
+    CGO_ENABLE=0 go build -a -o build/${{ github.repository.split('/')[1] }} ${{ inputs.entrance }}
 
 - name: test
+  timeout-minutes: 10
   run: |
     mkdir -p build/test-results
-
-    for dir in $(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \;); do
-      module_name=$(basename $dir)
-      echo "Testing module: $module_name"
-      
-      gotestsum --format testname \
-        --junitfile "build/test-results/$module_name-report.xml" \
-        --jsonfile "build/test-results/$module_name-test.json" \
-        --packages="./..." \
-        -- -coverprofile="build/test-results/$module_name-coverage.out" \
-        ./...
-    done
-
-    echo 'mode: count' > build/coverage.out
-    find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
-{%- endraw %}
+    gotestsum --format testname \
+      --junitfile build/test-results/report.xml \
+      --jsonfile build/test-results/test.json \
+      -- -coverprofile=build/test-results/coverage.out ./...
+{%+ endraw %}
 {%- endset %}

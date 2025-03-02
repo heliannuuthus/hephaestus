@@ -10,13 +10,7 @@
       }
     ],
     "secrets": [],
-    "outputs": [
-      {
-        "name": "version",
-        "desc": "major version",
-        "value": "jobs.build.outputs.version"
-      }
-    ]
+    "outputs": []
   },
   "lint": {},
   "security": {},

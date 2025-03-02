@@ -52,19 +52,6 @@
 {% endraw %}
 {%- endset %}
 
-{% set env -%}
-{% raw -%}
-- id: environments
-  name: environments
-  run: |
-    echo "
-    project=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
-    version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-    " >> "$GITHUB_OUTPUT"
-  shell: bash
-{% endraw %}
-{%- endset %}
-
 {% set lint -%}
 - name: lint
   run: |
