@@ -54,7 +54,7 @@
   timeout-minutes: 10
   run: |
     mkdir -p build
-    CGO_ENABLE=0 go build -a -o build/${{ github.repository.split('/')[1] }} ${{ inputs.entrance }}
+    CGO_ENABLE=0 go build -a -o build/${{ github.event.repository.name }} ${{ inputs.entrance }}
 
 - name: test
   timeout-minutes: 10

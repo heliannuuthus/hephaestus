@@ -137,8 +137,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.repository.split('/')[1] }}-v__VERSION__
-          releaseName: "${{ github.repository.split('/')[1] }} v__VERSION__"
+          tagName: ${{ github.event.repository.name }}-v__VERSION__
+          releaseName: "${{ github.event.repository.name }} v__VERSION__"
           releaseBody: ${{ github.event.head_commit.message }}
           releaseDraft: true
           prerelease: false
