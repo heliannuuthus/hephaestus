@@ -51,9 +51,9 @@
     "upload": {
       "name": "targets",
       "paths": [
-        "${{ inputs.workdir }}target/release/${{ github.event.repository.name }}",
-        "${{ inputs.workdir }}target/default/report.xml",
-        "${{ inputs.workdir }}target/cobertura.xml"
+        "${{ inputs.workdir }}build/release/${{ github.event.repository.name }}",
+        "${{ inputs.workdir }}build/default/report.xml",
+        "${{ inputs.workdir }}build/cobertura.xml"
       ]
     }
   }

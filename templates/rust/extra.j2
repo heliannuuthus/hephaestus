@@ -43,8 +43,8 @@
 {% set build -%}
 - name: test
   run: |
-    cargo nextest run --target-dir target
-    cargo tarpaulin --skip-clean --all-features --workspace --out xml --output-dir target
+    cargo nextest run --release --target-dir build
+    cargo tarpaulin --skip-clean --all-features --workspace --release --out xml --output-dir build
 
 - name: build
   run: cargo install cargo-auditable && cargo auditable build --release

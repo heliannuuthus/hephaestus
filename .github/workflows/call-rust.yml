@@ -157,8 +157,8 @@ jobs:
 
       - name: test
         run: |
-          cargo nextest run --target-dir target
-          cargo tarpaulin --skip-clean --all-features --workspace --out xml --output-dir target
+          cargo nextest run --release --target-dir build
+          cargo tarpaulin --skip-clean --all-features --workspace --release --out xml --output-dir build
 
       - name: build
         run: cargo install cargo-auditable && cargo auditable build --release
@@ -167,6 +167,6 @@ jobs:
         with:
           name: targets
           path: |
-              ${{ inputs.workdir }}target/release/${{ github.event.repository.name }}
-              ${{ inputs.workdir }}target/default/report.xml
-              ${{ inputs.workdir }}target/cobertura.xml
+              ${{ inputs.workdir }}build/release/${{ github.event.repository.name }}
+              ${{ inputs.workdir }}build/default/report.xml
+              ${{ inputs.workdir }}build/cobertura.xml
