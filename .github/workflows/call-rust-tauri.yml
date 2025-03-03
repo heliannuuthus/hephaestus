@@ -63,7 +63,7 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@latest
         if: matrix.platform == 'ubuntu-latest'
         with:
-          packages: libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf 
+          packages: libwebkit2gtk-4.0-dev patchelf build-essential curl wget file libayatana-appindicator3-dev libglib2.0-dev libssl-dev librsvg2-dev libgdk3.0-cil libatk1.0-dev libgtk-3-dev 
           version: rust-tauri-ci
           execute_install_scripts: true
 

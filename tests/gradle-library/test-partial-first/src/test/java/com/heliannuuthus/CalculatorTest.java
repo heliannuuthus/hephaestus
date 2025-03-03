@@ -1,3 +1,5 @@
+package com.heliannuuthus;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.heliannuuthus.Calculator;
