@@ -5,18 +5,19 @@ on:
     types: [opened, reopened, synchronize]
   pull_request_target:
     types: [closed]
+
 jobs:
   project:
-    uses: ./.github/workflows/call-rust.yml
+    uses: ./.github/workflows/ci-rust.yml
     permissions:
       contents: read
       packages: write
     with:
       workdir: "tests/rust/"
-      
+
   containerize:
-    needs: ["project"]
-    uses: ./.github/workflows/call-containerize.yml
+    needs: [project]
+    uses: ./.github/workflows/ci-containerize.yml
     permissions:
       contents: read
       packages: write

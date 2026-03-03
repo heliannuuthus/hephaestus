@@ -5,8 +5,9 @@ on:
     types: [opened, reopened, synchronize]
   pull_request_target:
     types: [closed]
+
 jobs:
   project:
-    uses: ./.github/workflows/call-node.yml
+    uses: ./.github/workflows/ci-frontend.yml
     with:
       workdir: "tests/node/"

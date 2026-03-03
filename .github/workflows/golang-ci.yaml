@@ -8,7 +8,7 @@ on:
 
 jobs:
   project:
-    uses: ./.github/workflows/call-golang.yml
+    uses: ./.github/workflows/ci-golang.yml
     permissions:
       contents: read
       packages: write
@@ -17,8 +17,8 @@ jobs:
       ENTRANCE: cmd/main.go
 
   containerize:
-    needs: ["project"]
-    uses: ./.github/workflows/call-containerize.yml
+    needs: [project]
+    uses: ./.github/workflows/ci-containerize.yml
     permissions:
       contents: read
       packages: write

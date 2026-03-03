@@ -1,0 +1,80 @@
+name: CI Node
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+      node-version:
+        required: false
+        default: "lts/*"
+        type: string
+        description: Node.js version
+      build:
+        required: false
+        default: build
+        type: string
+        description: Build script name
+      test:
+        required: false
+        default: ""
+        type: string
+        description: Test script name
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-node
+        with:
+          workdir: ${{ inputs.workdir }}
+          node-version: ${{ inputs.node-version }}
+
+  lint:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-node
+        with:
+          workdir: ${{ inputs.workdir }}
+          node-version: ${{ inputs.node-version }}
+      - name: Lint
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm lint
+
+  build:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.version.outputs.project }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-node
+        with:
+          workdir: ${{ inputs.workdir }}
+          node-version: ${{ inputs.node-version }}
+      - name: Build
+        if: inputs.build != ''
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm ${{ inputs.build }}
+      - name: Test
+        if: inputs.test != ''
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm ${{ inputs.test }}
+      - uses: ./actions/version
+        id: version
+        with:
+          workdir: ${{ inputs.workdir }}
+          lang: node

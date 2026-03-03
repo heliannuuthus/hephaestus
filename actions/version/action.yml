@@ -1,0 +1,57 @@
+name: Extract Version
+description: Extract project name and version from git tags and project metadata
+
+inputs:
+  workdir:
+    description: Working directory
+    required: false
+    default: "./"
+  lang:
+    description: "Project language: go, rust, or node"
+    required: true
+
+outputs:
+  project:
+    description: Project name
+    value: ${{ steps.extract.outputs.project }}
+  version:
+    description: Project version (tag-shortsha)
+    value: ${{ steps.extract.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: extract
+      name: Extract version info
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        version=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.1.0")
+        version=${version#v}
+        version="$version-$(git rev-parse --short HEAD)"
+
+        case "${{ inputs.lang }}" in
+          go)
+            project=$(go list -m)
+            project=${project##*/}
+            ;;
+          rust)
+            opt="--no-deps --format-version 1"
+            if [ -d "src-tauri" ]; then
+              opt="$opt --manifest-path src-tauri/Cargo.toml"
+            fi
+            project=$(cargo metadata $opt | jq -r '.packages[0].name')
+            pkg_version=$(cargo metadata $opt | jq -r '.packages[0].version')
+            version="$version-$pkg_version"
+            ;;
+          node)
+            project=$(node -p "require('./package.json').name")
+            ;;
+          *)
+            echo "::error::Unknown lang: ${{ inputs.lang }}"
+            exit 1
+            ;;
+        esac
+
+        echo "project=$project" >> "$GITHUB_OUTPUT"
+        echo "version=$version" >> "$GITHUB_OUTPUT"

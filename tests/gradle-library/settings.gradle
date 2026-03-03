@@ -1,4 +1,0 @@
-rootProject.name='gradle-library'
-include "test-partial-first"
-include "test-partial-second"
-include "test-partial-third"

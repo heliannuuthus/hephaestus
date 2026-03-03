@@ -1,223 +1,95 @@
-<h1 align="center">🌻🌻integration 🌻 deployment🌻🌻</h1>
+<h1 align="center">⚒️ hephaestus</h1>
 
-## Introduction
+Reusable GitHub Actions workflows and composite actions for **Golang**, **Rust**, **Node.js**, and **Tauri** projects.
 
-A github **continuous integration** and **continuous deployment**, built-in `java`, `rust`, `golang`, `node` different programming languages reusable workflow.
+## Architecture
 
-## Getting Started
+```
+actions/                          # Composite Actions (reusable steps)
+├── setup-go/action.yml           # Go + cache + golangci-lint/gosec
+├── setup-rust/action.yml         # Rust toolchain + cache + cargo tools
+├── setup-node/action.yml         # Node + pnpm + cache (backend)
+├── setup-pnpm/action.yml         # Node + pnpm + cache + eslint/prettier (frontend)
+├── version/action.yml            # Unified version/project name extraction
+└── containerize/action.yml       # Docker build + push to GHCR
 
-For **Java** projects that use **gradle** as a build tool, it provides integrated configuration, supporting `single applications`, `cloud services`, `single project libraries`, and `multi-project libraries`.
+.github/workflows/                # Reusable Workflows (job orchestration)
+├── ci-golang.yml                 # setup → lint → security → build
+├── ci-rust.yml                   # setup → lint → build
+├── ci-node.yml                   # setup → lint → build (backend)
+├── ci-frontend.yml               # setup → lint → build (frontend)
+├── ci-rust-tauri.yml             # multi-platform Tauri build
+└── ci-containerize.yml           # Docker containerization
+```
 
-### rust
+## Usage
 
-[![rust](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/rust-ci.yml)
+### Golang
 
 ```yaml
-name: rust
-
-on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-  pull_request_target:
-    types: [closed]
 jobs:
-  setup:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-setup.yml
-    with:
-      workdir: "tests/rust/"
-
-  lint:
-    if: ${{ github.event.pull_request.merged != true }}
-    needs: setup
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-lint.yml
-    with:
-      workdir: "tests/rust/"
-
-  build:
-    if: ${{ always() && needs.setup.result == 'success' }}
-    needs: [setup, lint]
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-build.yml
-    with:
-      workdir: "tests/rust/"
-
-  containeraized:
-    if: ${{ always() && github.event.pull_request.merged == true }}
-    needs: build
+  ci:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-golang.yml@main
     permissions:
       contents: read
       packages: write
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-containerize.yml
     with:
-      version: ${{ needs.build.outputs.version }}
-      workdir: "tests/rust/"
-      target: "tests/rust/target/"
-```
-
-### gradle-cloud
-
-[![gradle-cloud](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/golang-cloud-ci.yml/badge.svg)](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/golang-cloud-ci.yml)
-
-> use **Dockerfile** to build the project image, the default build jar package name is `app.jar`, output directory is `build/libs/`
-
-```yaml
-name: gradle-cloud
-
-on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-  pull_request_target:
-    types: [closed]
-
-jobs:
-  lint:
-    if: ${{ github.event.pull_request.merged != true }}
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-gradle-lint.yml
-    with:
-      workdir: "tests/gradle-cloud/"
-
-  build:
-    if: always()
-    needs: lint
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-gradle-build.yml
-    with:
-      workdir: "tests/gradle-cloud/"
-
-  containerize:
-    if: ${{ always() && github.event.pull_request.merged == true }}
-    needs: build
-    permissions:
-      contents: read
-      packages: write
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-containerize.yml
-    with:
-      workdir: "tests/gradle-cloud/"
-      version: ${{ needs.build.outputs.version }}
-      target: "tests/gradle-cloud/build"
-```
-
-### gradle-library
-
-[![gradle-library](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/gradle-library-ci.yml/badge.svg)](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/gradle-library-ci.yml)
-
-> publish the package to github pakcage
-
-```yaml
-name: gradle-library
-
-on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-  pull_request_target:
-    types: [closed]
-
-jobs:
-  lint:
-    if: ${{ github.event.pull_request.merged != true }}
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-gradle-lint.yml
-    with:
-      workdir: "tests/gradle-library/"
-
-  build:
-    if: always()
-    needs: lint
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-gradle-build.yml
-    with:
-      workdir: "tests/gradle-library/"
-
-  containerize:
-    if: ${{ always() && github.event.pull_request.merged == true }}
-    needs: build
-    permissions:
-      contents: read
-      packages: write
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-gradle-publish.yml
-    with:
-      workdir: "tests/gradle/"
-      user: ${{ github.actor }}
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-### golang
-
-[![golang](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/golang-ci.yaml/badge.svg)](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/golang-ci.yaml)
-
-```yaml
-name: golang
-
-on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-  pull_request_target:
-    types: [closed]
-
-jobs:
-  setup:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-golang-setup.yml
-    with:
-      workdir: "tests/golang/"
-
-  lint:
-    if: ${{ github.event.pull_request.merged != true }}
-    needs: setup
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-golang-lint.yml
-    with:
-      workdir: "tests/golang/"
-
-  build:
-    if: ${{ always() && needs.setup.result == 'success' }}
-    needs: [setup, lint]
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-golang-build.yml
-    with:
-      workdir: "tests/golang/"
-      GOOS: linux
-      GOARCH: amd64
+      workdir: "./"
       ENTRANCE: cmd/main.go
 
-  containeraized:
-    if: ${{ always() && github.event.pull_request.merged }}
-    needs: build
+  containerize:
+    needs: [ci]
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-containerize.yml@main
     permissions:
       contents: read
       packages: write
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-containerize.yml
     with:
-      version: ${{ needs.build.outputs.version }}
-      workdir: "tests/golang/"
-      target: "tests/golang/build"
+      version: ${{ needs.ci.outputs.version }}
+      targets: "build"
 ```
 
-### node
-
-[![node](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/node-ci.yaml/badge.svg)](https://github.com/heliannuuthus/integrate-deploy/actions/workflows/node-ci.yaml)
+### Rust
 
 ```yaml
-name: node
-
-on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-  pull_request_target:
-    types: [closed]
 jobs:
-  setup:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-node-setup.yml
+  ci:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-rust.yml@main
+    permissions:
+      contents: read
+      packages: write
     with:
-      workdir: "tests/node/"
+      workdir: "./"
+```
 
-  lint:
-    if: ${{ github.event.pull_request.merged != true }}
-    needs: setup
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-node-lint.yml
-    with:
-      workdir: "tests/node/"
-      PNPM_STORE: ${{ needs.setup.outputs.PNPM_STORE }}
+### Frontend (pnpm + eslint + prettier)
 
-  build:
-    if: ${{ always() && needs.setup.result == 'success' }}
-    needs: [setup, lint]
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-node-build.yml
+```yaml
+jobs:
+  ci:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-frontend.yml@main
     with:
-      workdir: "tests/node/"
-      PNPM_STORE: ${{ needs.setup.outputs.PNPM_STORE }}
+      workdir: "./"
+```
+
+### Node.js Backend
+
+```yaml
+jobs:
+  ci:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-node.yml@main
+    with:
+      workdir: "./"
+```
+
+### Rust Tauri
+
+```yaml
+jobs:
+  ci:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-rust-tauri.yml@main
+    permissions:
+      contents: write
+      packages: write
+    with:
+      workdir: "./"
 ```

@@ -1,0 +1,111 @@
+name: CI Golang
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+      GOOS:
+        required: false
+        default: linux
+        type: string
+        description: Target OS
+      GOARCH:
+        required: false
+        default: amd64
+        type: string
+        description: Target architecture
+      ENTRANCE:
+        required: false
+        default: "./main.go"
+        type: string
+        description: Main package relative path
+    outputs:
+      version:
+        value: ${{ jobs.build.outputs.version }}
+        description: Build version
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-go
+        with:
+          workdir: ${{ inputs.workdir }}
+
+  lint:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-go
+        with:
+          workdir: ${{ inputs.workdir }}
+      - name: golangci-lint
+        working-directory: ${{ inputs.workdir }}
+        run: golangci-lint run ./...
+
+  security:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-go
+        with:
+          workdir: ${{ inputs.workdir }}
+      - name: gosec
+        working-directory: ${{ inputs.workdir }}
+        run: |
+          mkdir -p build
+          gosec -fmt=json -out=build/gosec-report.json -stdout -verbose=text ./...
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gosec-report
+          path: ${{ inputs.workdir }}build/gosec-report.json
+
+  build:
+    needs: [lint, security]
+    runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.version.outputs.project }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-go
+        with:
+          workdir: ${{ inputs.workdir }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: gosec-report
+          path: ${{ inputs.workdir }}build/gosec-report.json
+      - uses: ./actions/version
+        id: version
+        with:
+          workdir: ${{ inputs.workdir }}
+          lang: go
+      - name: Build binary
+        working-directory: ${{ inputs.workdir }}
+        run: |
+          mkdir -p build
+          CGO_ENABLED=0 GOOS=${{ inputs.GOOS }} GOARCH=${{ inputs.GOARCH }} go build -a -o build/${{ steps.version.outputs.project }} ${{ inputs.ENTRANCE }}
+      - name: Test
+        working-directory: ${{ inputs.workdir }}
+        run: |
+          go test -gcflags="all=-N -l" -coverprofile=build/coverage.out -covermode count -json -v ./... 2>&1 | tee build/test.json | gotestfmt
+          go-junit-report -parser gojson -in build/test.json -out build/report.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: targets
+          path: ${{ inputs.workdir }}build/

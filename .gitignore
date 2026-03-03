@@ -1,5 +1,3 @@
-.gradle
-!.idea/icon*.png
-*.iml
-build/
-**/.idea
+__pycache__/
+*.pyc
+.env
