@@ -41,7 +41,6 @@ linters:
     - godot
     - godox
     - goheader
-    - goimports
     - gomoddirectives
     - gomodguard
     - goprintffuncname
