@@ -22,8 +22,9 @@ func performRequest(r http.Handler, method, path string) *httptest.ResponseRecor
 func TestGetUsers(t *testing.T) {
 	t.Parallel()
 
-	router := gin.Default()
 	gin.SetMode(gin.DebugMode)
+
+	router := gin.Default()
 	router.GET("/users", getUsers)
 
 	w := performRequest(router, "GET", "/users")
@@ -71,7 +72,7 @@ func TestCreateUser(t *testing.T) {
 	payload := `{"id":"3","name":"Charlie","age":25}`
 	reader := strings.NewReader(payload)
 
-	req, _ := http.NewRequestWithContext(context.Background(), "POST", "/users", reader)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/users", reader)
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()

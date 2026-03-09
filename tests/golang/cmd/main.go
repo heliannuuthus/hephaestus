@@ -58,7 +58,6 @@ func createUser(c *gin.Context) {
 		return
 	}
 
-	newUser.ID = newUser.ID
 	users = append(users, newUser)
 
 	c.JSON(http.StatusCreated, newUser)
