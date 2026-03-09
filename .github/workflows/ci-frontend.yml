@@ -50,8 +50,8 @@ jobs:
       - name: Lint
         working-directory: ${{ inputs.workdir }}
         run: |
-          pnpm eslint .
-          pnpm prettier . --check
+          pnpm lint
+          pnpm format:check
 
   build:
     needs: [lint]
