@@ -1,3 +1,4 @@
+// Package main provides a simple REST API for user management.
 package main
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// User represents a user entity.
 type User struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -35,21 +37,29 @@ func getUsers(c *gin.Context) {
 
 func getUser(c *gin.Context) {
 	id := c.Param("id")
+
 	for _, user := range users {
 		if user.ID == id {
 			c.JSON(http.StatusOK, user)
+
 			return
 		}
 	}
+
 	c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 }
 
 func createUser(c *gin.Context) {
 	var newUser User
+
 	if err := c.BindJSON(&newUser); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
 		return
 	}
+
+	newUser.ID = newUser.ID
 	users = append(users, newUser)
+
 	c.JSON(http.StatusCreated, newUser)
 }
