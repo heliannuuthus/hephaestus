@@ -46,7 +46,16 @@ runs:
         prefix-key: rust-cache
         shared-key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
+    - name: Restore cargo tools cache
+      uses: actions/cache/restore@v4
+      id: cargo-tools-cache
+      with:
+        path: ~/.cargo/bin
+        key: ${{ runner.os }}-cargo-tools-${{ inputs.toolchain }}
+        restore-keys: ${{ runner.os }}-cargo-tools-
+
     - name: Install cargo tools
+      if: steps.cargo-tools-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         cargo install cargo-audit
@@ -54,3 +63,10 @@ runs:
         cargo install cargo2junit
         cargo install cargo-tarpaulin
         cargo install --locked cargo-nextest
+
+    - name: Save cargo tools cache
+      if: steps.cargo-tools-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cargo/bin
+        key: ${{ runner.os }}-cargo-tools-${{ inputs.toolchain }}

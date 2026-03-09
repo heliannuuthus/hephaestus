@@ -13,20 +13,20 @@ runs:
     - uses: actions/setup-go@v5
       with:
         go-version-file: ${{ inputs.workdir }}go.mod
-        cache: false
+        cache: true
+        cache-dependency-path: ${{ inputs.workdir }}go.sum
 
-    - name: Restore Go module cache
+    - name: Restore CI tools cache
       uses: actions/cache/restore@v4
-      id: cache-restore
-      env:
-        cache-name: cache-gomod
+      id: tools-cache
       with:
-        path: ~/go
-        key: ${{ runner.os }}-go-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-        restore-keys: ${{ runner.os }}-go-${{ env.cache-name }}-
+        path: |
+          ~/go/bin
+        key: ${{ runner.os }}-go-tools-${{ hashFiles('**/go.mod') }}
+        restore-keys: ${{ runner.os }}-go-tools-
 
     - name: Install CI tools
-      if: steps.cache-restore.outputs.cache-hit != 'true'
+      if: steps.tools-cache.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: |
@@ -34,9 +34,10 @@ runs:
         go install github.com/securego/gosec/v2/cmd/gosec@latest
         go install gotest.tools/gotestsum@latest
 
-    - name: Save Go module cache
-      if: steps.cache-restore.outputs.cache-hit != 'true'
+    - name: Save CI tools cache
+      if: steps.tools-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        path: ~/go
-        key: ${{ runner.os }}-go-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
+        path: |
+          ~/go/bin
+        key: ${{ runner.os }}-go-tools-${{ hashFiles('**/go.mod') }}

@@ -27,31 +27,22 @@ runs:
       shell: bash
       run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
 
-    - name: Restore pnpm cache
+    - name: Restore pnpm store cache
       uses: actions/cache/restore@v4
       id: cache-restore
       with:
-        path: |
-          ${{ inputs.workdir }}node_modules
-          **/node_modules
-          **/.eslintcache
-          ${{ steps.pnpm-store.outputs.path }}
-        key: ${{ runner.os }}-pnpm-frontend-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: ${{ runner.os }}-pnpm-frontend-
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: ${{ runner.os }}-pnpm-store-
 
     - name: Install dependencies
-      if: steps.cache-restore.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ inputs.workdir }}
-      run: pnpm i
+      run: pnpm i --frozen-lockfile
 
-    - name: Save pnpm cache
+    - name: Save pnpm store cache
       if: steps.cache-restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        path: |
-          ${{ inputs.workdir }}node_modules
-          **/node_modules
-          **/.eslintcache
-          ${{ steps.pnpm-store.outputs.path }}
-        key: ${{ runner.os }}-pnpm-frontend-${{ hashFiles('**/pnpm-lock.yaml') }}
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
