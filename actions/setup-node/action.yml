@@ -19,6 +19,8 @@ runs:
         node-version: ${{ inputs.node-version }}
 
     - uses: pnpm/action-setup@v4
+      with:
+        package_json_file: ${{ inputs.workdir }}package.json
 
     - name: Get pnpm store path
       id: pnpm-store
