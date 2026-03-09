@@ -1,0 +1,57 @@
+name: Setup pnpm (Frontend)
+description: Setup Node.js with pnpm, dependency cache, eslint and prettier (frontend projects)
+
+inputs:
+  workdir:
+    description: Working directory
+    required: false
+    default: "./"
+  node-version:
+    description: Node.js version
+    required: false
+    default: "lts/*"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - uses: pnpm/action-setup@v4
+      with:
+        package_json_file: ${{ inputs.workdir }}package.json
+
+    - name: Get pnpm store path
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm cache
+      uses: actions/cache/restore@v4
+      id: cache-restore
+      with:
+        path: |
+          ${{ inputs.workdir }}node_modules
+          **/node_modules
+          **/.eslintcache
+          ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-frontend-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: ${{ runner.os }}-pnpm-frontend-
+
+    - name: Install dependencies
+      if: steps.cache-restore.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      run: pnpm i
+
+    - name: Save pnpm cache
+      if: steps.cache-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ${{ inputs.workdir }}node_modules
+          **/node_modules
+          **/.eslintcache
+          ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-frontend-${{ hashFiles('**/pnpm-lock.yaml') }}

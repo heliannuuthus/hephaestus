@@ -1,0 +1,34 @@
+name: CI Containerize
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory (Dockerfile location)
+      version:
+        required: true
+        type: string
+        description: Image version tag
+      targets:
+        required: true
+        type: string
+        description: Build artifact download path
+
+jobs:
+  containerize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/containerize
+        with:
+          workdir: ${{ inputs.workdir }}
+          version: ${{ inputs.version }}
+          targets: ${{ inputs.targets }}

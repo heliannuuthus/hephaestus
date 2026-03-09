@@ -1,0 +1,92 @@
+name: CI Rust
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+      toolchain:
+        required: false
+        default: stable
+        type: string
+        description: Rust toolchain
+      targets:
+        required: false
+        default: x86_64-unknown-linux-gnu
+        type: string
+        description: Rust target triple
+    outputs:
+      version:
+        value: ${{ jobs.build.outputs.version }}
+        description: Build version
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-rust
+        with:
+          workdir: ${{ inputs.workdir }}
+          toolchain: ${{ inputs.toolchain }}
+          targets: ${{ inputs.targets }}
+
+  lint:
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-rust
+        with:
+          workdir: ${{ inputs.workdir }}
+          toolchain: ${{ inputs.toolchain }}
+          targets: ${{ inputs.targets }}
+      - name: Lint
+        working-directory: ${{ inputs.workdir }}
+        run: |
+          cargo fmt --all -- --check
+          cargo check --no-default-features
+          cargo clippy --all-targets --all-features -- -D warnings
+
+  build:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.version.outputs.project }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./actions/setup-rust
+        with:
+          workdir: ${{ inputs.workdir }}
+          toolchain: ${{ inputs.toolchain }}
+          targets: ${{ inputs.targets }}
+      - name: Test
+        working-directory: ${{ inputs.workdir }}
+        run: |
+          cargo nextest run --target-dir target
+          cargo tarpaulin --skip-clean --all-features --workspace --out xml --output-dir target
+      - name: Build
+        working-directory: ${{ inputs.workdir }}
+        run: cargo auditable build --release
+      - uses: ./actions/version
+        id: version
+        with:
+          workdir: ${{ inputs.workdir }}
+          lang: rust
+      - uses: actions/upload-artifact@v4
+        with:
+          name: targets
+          path: |
+            ${{ inputs.workdir }}target/release/${{ steps.version.outputs.project }}
+            ${{ inputs.workdir }}target/default/report.xml
+            ${{ inputs.workdir }}target/cobertura.xml

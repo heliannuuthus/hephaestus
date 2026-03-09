@@ -5,9 +5,10 @@ on:
     types: [opened, reopened, synchronize]
   pull_request_target:
     types: [closed]
+
 jobs:
   project:
-    uses: ./.github/workflows/call-rust-tauri.yml
+    uses: ./.github/workflows/ci-rust-tauri.yml
     permissions:
       contents: write
       packages: write

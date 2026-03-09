@@ -1,0 +1,43 @@
+name: Setup Go
+description: Setup Go environment with module cache and CI tools
+
+inputs:
+  workdir:
+    description: Working directory
+    required: false
+    default: "./"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ inputs.workdir }}go.mod
+        cache: false
+
+    - name: Restore Go module cache
+      uses: actions/cache/restore@v4
+      id: cache-restore
+      env:
+        cache-name: cache-gomod
+      with:
+        path: ~/go
+        key: ${{ runner.os }}-go-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: ${{ runner.os }}-go-${{ env.cache-name }}-
+
+    - name: Install CI tools
+      if: steps.cache-restore.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
+        go install github.com/jstemmer/go-junit-report/v2@latest
+
+    - name: Save Go module cache
+      if: steps.cache-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/go
+        key: ${{ runner.os }}-go-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}

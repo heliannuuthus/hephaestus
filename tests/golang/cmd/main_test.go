@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,15 +12,19 @@ import (
 )
 
 func performRequest(r http.Handler, method, path string) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(method, path, nil)
+	req, _ := http.NewRequestWithContext(context.Background(), method, path, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
+
 	return w
 }
 
 func TestGetUsers(t *testing.T) {
-	router := gin.Default()
+	t.Parallel()
+
 	gin.SetMode(gin.DebugMode)
+
+	router := gin.Default()
 	router.GET("/users", getUsers)
 
 	w := performRequest(router, "GET", "/users")
@@ -31,6 +36,8 @@ func TestGetUsers(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
+	t.Parallel()
+
 	router := gin.Default()
 	router.GET("/users/:id", getUser)
 
@@ -43,6 +50,8 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestGetUserNotFound(t *testing.T) {
+	t.Parallel()
+
 	router := gin.Default()
 	router.GET("/users/:id", getUser)
 
@@ -55,12 +64,15 @@ func TestGetUserNotFound(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
+	t.Parallel()
+
 	router := gin.Default()
 	router.POST("/users", createUser)
 
 	payload := `{"id":"3","name":"Charlie","age":25}`
 	reader := strings.NewReader(payload)
-	req, _ := http.NewRequest("POST", "/users", reader)
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/users", reader)
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()

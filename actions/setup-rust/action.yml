@@ -1,0 +1,56 @@
+name: Setup Rust
+description: Setup Rust toolchain with cache and CI tools
+
+inputs:
+  workdir:
+    description: Working directory
+    required: false
+    default: "./"
+  toolchain:
+    description: Rust toolchain version
+    required: false
+    default: stable
+  targets:
+    description: Rust target triple
+    required: false
+    default: x86_64-unknown-linux-gnu
+  apt-packages:
+    description: Additional apt packages to install (space-separated)
+    required: false
+    default: "build-essential libssl-dev pkg-config"
+
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      if: runner.os == 'Linux'
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: ${{ inputs.apt-packages }}
+        version: rust-${{ inputs.toolchain }}
+        execute_install_scripts: true
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        targets: ${{ inputs.targets }}
+        components: clippy, rustfmt
+
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: ${{ inputs.workdir }}
+        cache-targets: "false"
+        cache-all-crates: "true"
+        prefix-key: rust-cache
+        shared-key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install cargo tools
+      shell: bash
+      run: |
+        cargo install cargo-audit
+        cargo install cargo-auditable
+        cargo install cargo2junit
+        cargo install cargo-tarpaulin
+        cargo install --locked cargo-nextest

@@ -1,0 +1,101 @@
+name: CI Rust Tauri
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+      node-version:
+        required: false
+        default: "lts/*"
+        type: string
+        description: Node.js version
+      toolchain:
+        required: false
+        default: stable
+        type: string
+        description: Rust toolchain
+      build:
+        required: false
+        default: build
+        type: string
+        description: Frontend build command
+      test:
+        required: false
+        default: ""
+        type: string
+        description: Frontend test command
+
+jobs:
+  build-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          version: rust-tauri-ci
+          execute_install_scripts: true
+
+      - uses: ./actions/setup-pnpm
+        with:
+          workdir: ${{ inputs.workdir }}
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "${{ inputs.workdir }}src-tauri"
+          cache-targets: false
+
+      - name: Install frontend dependencies
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm install
+
+      - uses: ./actions/version
+        id: version
+        with:
+          workdir: ${{ inputs.workdir }}
+          lang: rust
+
+      - name: Build with Tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm tauri
+          projectPath: ${{ inputs.workdir }}
+          tagName: ${{ steps.version.outputs.project }}-v__VERSION__
+          releaseName: "${{ steps.version.outputs.project }} v__VERSION__"
+          releaseBody: ${{ github.event.head_commit.message }}
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
