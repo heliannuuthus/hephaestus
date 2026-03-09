@@ -92,6 +92,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: pnpm tauri
+          projectPath: ${{ inputs.workdir }}
           tagName: ${{ steps.version.outputs.project }}-v__VERSION__
           releaseName: "${{ steps.version.outputs.project }} v__VERSION__"
           releaseBody: ${{ github.event.head_commit.message }}
