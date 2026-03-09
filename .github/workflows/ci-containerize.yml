@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/containerize
+      - uses: heliannuuthus/hephaestus/actions/containerize@main
         with:
           workdir: ${{ inputs.workdir }}
           version: ${{ inputs.version }}

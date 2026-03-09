@@ -59,7 +59,7 @@ jobs:
           version: rust-tauri-ci
           execute_install_scripts: true
 
-      - uses: ./actions/setup-pnpm
+      - uses: heliannuuthus/hephaestus/actions/setup-pnpm@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
@@ -80,7 +80,7 @@ jobs:
         working-directory: ${{ inputs.workdir }}
         run: pnpm install
 
-      - uses: ./actions/version
+      - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
           workdir: ${{ inputs.workdir }}
