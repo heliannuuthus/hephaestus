@@ -49,9 +49,10 @@ jobs:
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
-      - name: golangci-lint
-        working-directory: ${{ inputs.workdir }}
-        run: golangci-lint run ./...
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+          working-directory: ${{ inputs.workdir }}
 
   security:
     needs: [setup]

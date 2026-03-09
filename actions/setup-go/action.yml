@@ -6,6 +6,14 @@ inputs:
     description: Working directory
     required: false
     default: "./"
+  gosec-version:
+    description: gosec version
+    required: false
+    default: "2.24.7"
+  gotestsum-version:
+    description: gotestsum version
+    required: false
+    default: "1.13.0"
 
 runs:
   using: composite
@@ -16,28 +24,16 @@ runs:
         cache: true
         cache-dependency-path: ${{ inputs.workdir }}go.sum
 
-    - name: Restore CI tools cache
-      uses: actions/cache/restore@v4
-      id: tools-cache
-      with:
-        path: |
-          ~/go/bin
-        key: ${{ runner.os }}-go-tools-${{ hashFiles('**/go.mod') }}
-        restore-keys: ${{ runner.os }}-go-tools-
-
-    - name: Install CI tools
-      if: steps.tools-cache.outputs.cache-hit != 'true'
+    - name: Install gosec
       shell: bash
-      working-directory: ${{ inputs.workdir }}
       run: |
-        go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
-        go install gotest.tools/gotestsum@latest
+        GOSEC_VERSION="${{ inputs.gosec-version }}"
+        curl -sfL "https://github.com/securego/gosec/releases/download/v${GOSEC_VERSION}/gosec_${GOSEC_VERSION}_linux_amd64.tar.gz" \
+          | tar -xz -C /usr/local/bin gosec
 
-    - name: Save CI tools cache
-      if: steps.tools-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: |
-          ~/go/bin
-        key: ${{ runner.os }}-go-tools-${{ hashFiles('**/go.mod') }}
+    - name: Install gotestsum
+      shell: bash
+      run: |
+        GOTESTSUM_VERSION="${{ inputs.gotestsum-version }}"
+        curl -sfL "https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz" \
+          | tar -xz -C /usr/local/bin gotestsum
