@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-rust
+      - uses: heliannuuthus/hephaestus/actions/setup-rust@main
         with:
           workdir: ${{ inputs.workdir }}
           toolchain: ${{ inputs.toolchain }}
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-rust
+      - uses: heliannuuthus/hephaestus/actions/setup-rust@main
         with:
           workdir: ${{ inputs.workdir }}
           toolchain: ${{ inputs.toolchain }}
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-rust
+      - uses: heliannuuthus/hephaestus/actions/setup-rust@main
         with:
           workdir: ${{ inputs.workdir }}
           toolchain: ${{ inputs.toolchain }}
@@ -78,7 +78,7 @@ jobs:
       - name: Build
         working-directory: ${{ inputs.workdir }}
         run: cargo auditable build --release
-      - uses: ./actions/version
+      - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
           workdir: ${{ inputs.workdir }}

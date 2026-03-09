@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-node
+      - uses: heliannuuthus/hephaestus/actions/setup-node@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-node
+      - uses: heliannuuthus/hephaestus/actions/setup-node@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-node
+      - uses: heliannuuthus/hephaestus/actions/setup-node@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
@@ -73,7 +73,7 @@ jobs:
         if: inputs.test != ''
         working-directory: ${{ inputs.workdir }}
         run: pnpm ${{ inputs.test }}
-      - uses: ./actions/version
+      - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
           workdir: ${{ inputs.workdir }}

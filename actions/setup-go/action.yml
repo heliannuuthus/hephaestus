@@ -6,6 +6,14 @@ inputs:
     description: Working directory
     required: false
     default: "./"
+  gosec-version:
+    description: gosec version
+    required: false
+    default: "2.24.7"
+  gotestsum-version:
+    description: gotestsum version
+    required: false
+    default: "1.13.0"
 
 runs:
   using: composite
@@ -13,31 +21,19 @@ runs:
     - uses: actions/setup-go@v5
       with:
         go-version-file: ${{ inputs.workdir }}go.mod
-        cache: false
+        cache: true
+        cache-dependency-path: ${{ inputs.workdir }}go.sum
 
-    - name: Restore Go module cache
-      uses: actions/cache/restore@v4
-      id: cache-restore
-      env:
-        cache-name: cache-gomod
-      with:
-        path: ~/go
-        key: ${{ runner.os }}-go-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-        restore-keys: ${{ runner.os }}-go-${{ env.cache-name }}-
-
-    - name: Install CI tools
-      if: steps.cache-restore.outputs.cache-hit != 'true'
+    - name: Install gosec
       shell: bash
-      working-directory: ${{ inputs.workdir }}
       run: |
-        go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
-        go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
-        go install github.com/jstemmer/go-junit-report/v2@latest
+        GOSEC_VERSION="${{ inputs.gosec-version }}"
+        curl -sfL "https://github.com/securego/gosec/releases/download/v${GOSEC_VERSION}/gosec_${GOSEC_VERSION}_linux_amd64.tar.gz" \
+          | tar -xz -C /usr/local/bin gosec
 
-    - name: Save Go module cache
-      if: steps.cache-restore.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ~/go
-        key: ${{ runner.os }}-go-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
+    - name: Install gotestsum
+      shell: bash
+      run: |
+        GOTESTSUM_VERSION="${{ inputs.gotestsum-version }}"
+        curl -sfL "https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz" \
+          | tar -xz -C /usr/local/bin gotestsum

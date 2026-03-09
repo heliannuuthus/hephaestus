@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-go
+      - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
 
@@ -46,12 +46,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-go
+      - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
-      - name: golangci-lint
-        working-directory: ${{ inputs.workdir }}
-        run: golangci-lint run ./...
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+          working-directory: ${{ inputs.workdir }}
 
   security:
     needs: [setup]
@@ -60,7 +61,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-go
+      - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
       - name: gosec
@@ -83,14 +84,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./actions/setup-go
+      - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
       - uses: actions/download-artifact@v4
         with:
           name: gosec-report
           path: ${{ inputs.workdir }}build/gosec-report.json
-      - uses: ./actions/version
+      - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
           workdir: ${{ inputs.workdir }}
@@ -103,8 +104,20 @@ jobs:
       - name: Test
         working-directory: ${{ inputs.workdir }}
         run: |
-          go test -gcflags="all=-N -l" -coverprofile=build/coverage.out -covermode count -json -v ./... 2>&1 | tee build/test.json | gotestfmt
-          go-junit-report -parser gojson -in build/test.json -out build/report.xml
+          mkdir -p build/test-results
+          for dir in $(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \;); do
+            module_name=$(basename "$dir")
+            echo "::group::Testing module: $module_name"
+            gotestsum --format testname \
+              --junitfile "build/test-results/$module_name-report.xml" \
+              --jsonfile "build/test-results/$module_name-test.json" \
+              --packages="$dir/..." \
+              -- -coverprofile="build/test-results/$module_name-coverage.out" \
+              -covermode count
+            echo "::endgroup::"
+          done
+          echo 'mode: count' > build/coverage.out
+          find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
       - uses: actions/upload-artifact@v4
         with:
           name: targets
