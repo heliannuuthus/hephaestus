@@ -24,7 +24,9 @@ func main() {
 	router.GET("/users/:id", getUser)
 	router.POST("/users", createUser)
 
-	router.Run(":8080")
+	if err := router.Run(":8080"); err != nil {
+		panic(err)
+	}
 }
 
 func getUsers(c *gin.Context) {

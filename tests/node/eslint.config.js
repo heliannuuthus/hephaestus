@@ -30,5 +30,5 @@ export default defineConfig(
 			"prefer-const": "error",
 		},
 	},
-	prettier,
+	prettier
 );

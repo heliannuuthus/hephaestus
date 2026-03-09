@@ -30,7 +30,6 @@ linters:
     - exhaustruct
     - forbidigo
     - funlen
-    - gci
     - ginkgolinter
     - gocheckcompilerdirectives
     - gochecknoinits
