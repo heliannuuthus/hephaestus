@@ -41,7 +41,7 @@ jobs:
             target: aarch64-apple-darwin
           - platform: macos-latest
             target: x86_64-apple-darwin
-          - platform: ubuntu-latest
+          - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
@@ -52,7 +52,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf

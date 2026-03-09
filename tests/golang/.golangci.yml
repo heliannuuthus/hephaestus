@@ -1,19 +1,15 @@
+version: "2"
+
 run:
-  # The default concurrency value is the number of available CPU.
   concurrency: 4
-  # Timeout for analysis, e.g. 30s, 5m.
-  # Default: 1m
   timeout: 5m
-  # Exit code when at least one issue was found.
-  # Default: 1
   issues-exit-code: 2
-  go: '1.20'
+
 output:
   path-prefix: ""
+
 linters:
-  # Disable all linters.
-  # Default: false
-  disable-all: true
+  default: standard
   enable:
     - asasalint
     - asciicheck
@@ -27,14 +23,11 @@ linters:
     - dupl
     - dupword
     - durationcheck
-    - errcheck
     - errchkjson
     - errname
     - errorlint
-    - execinquery
     - exhaustive
     - exhaustruct
-    - exportloopref
     - forbidigo
     - funlen
     - gci
@@ -48,19 +41,13 @@ linters:
     - gocyclo
     - godot
     - godox
-    - goerr113
-    - gofmt
-    - gofumpt
     - goheader
     - goimports
-    - gomnd
     - gomoddirectives
     - gomodguard
     - goprintffuncname
     - gosec
-    - gosimple
     - gosmopolitan
-    - govet
     - grouper
     - importas
     - inamedparam
@@ -94,8 +81,6 @@ linters:
     - rowserrcheck
     - sloglint
     - sqlclosecheck
-    - staticcheck
-    - stylecheck
     - tagalign
     - tagliatelle
     - tenv
@@ -104,14 +89,11 @@ linters:
     - testpackage
     - thelper
     - tparallel
-    - typecheck
     - unconvert
     - unparam
-    - unused
     - usestdlibvars
     - wastedassign
     - whitespace
     - wrapcheck
     - wsl
     - zerologlint
-fast: true

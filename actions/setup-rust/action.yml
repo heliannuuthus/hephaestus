@@ -23,6 +23,7 @@ runs:
   using: composite
   steps:
     - name: Install system dependencies
+      if: runner.os == 'Linux'
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: ${{ inputs.apt-packages }}
@@ -52,4 +53,4 @@ runs:
         cargo install cargo-auditable
         cargo install cargo2junit
         cargo install cargo-tarpaulin
-        cargo install cargo-nextest
+        cargo install --locked cargo-nextest
