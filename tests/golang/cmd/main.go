@@ -25,7 +25,7 @@ func NewUserStore(initial []User) *UserStore {
 	cp := make([]User, len(initial))
 	copy(cp, initial)
 
-	return &UserStore{users: cp}
+	return &UserStore{mu: sync.RWMutex{}, users: cp}
 }
 
 func (s *UserStore) All() []User {
@@ -48,7 +48,7 @@ func (s *UserStore) FindByID(id string) (User, bool) {
 		}
 	}
 
-	return User{}, false
+	return User{ID: "", Name: "", Age: 0}, false
 }
 
 func (s *UserStore) Add(u User) {
@@ -93,6 +93,7 @@ func getUser(store *UserStore) gin.HandlerFunc {
 
 		if user, ok := store.FindByID(id); ok {
 			c.JSON(http.StatusOK, user)
+
 			return
 		}
 
@@ -106,6 +107,7 @@ func createUser(store *UserStore) gin.HandlerFunc {
 
 		if err := c.BindJSON(&newUser); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
 			return
 		}
 
