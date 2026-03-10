@@ -4,12 +4,25 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.TestMode)
+	os.Exit(m.Run())
+}
+
+func seedStore() *UserStore {
+	return NewUserStore([]User{
+		{ID: "1", Name: "Alice", Age: 30},
+		{ID: "2", Name: "Bob", Age: 35},
+	})
+}
 
 func performRequest(r http.Handler, method, path string) *httptest.ResponseRecorder {
 	req, _ := http.NewRequestWithContext(context.Background(), method, path, nil)
@@ -22,11 +35,7 @@ func performRequest(r http.Handler, method, path string) *httptest.ResponseRecor
 func TestGetUsers(t *testing.T) {
 	t.Parallel()
 
-	gin.SetMode(gin.DebugMode)
-
-	router := gin.Default()
-	router.GET("/users", getUsers)
-
+	router := setupRouter(seedStore())
 	w := performRequest(router, "GET", "/users")
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -38,9 +47,7 @@ func TestGetUsers(t *testing.T) {
 func TestGetUser(t *testing.T) {
 	t.Parallel()
 
-	router := gin.Default()
-	router.GET("/users/:id", getUser)
-
+	router := setupRouter(seedStore())
 	w := performRequest(router, "GET", "/users/1")
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -52,9 +59,7 @@ func TestGetUser(t *testing.T) {
 func TestGetUserNotFound(t *testing.T) {
 	t.Parallel()
 
-	router := gin.Default()
-	router.GET("/users/:id", getUser)
-
+	router := setupRouter(seedStore())
 	w := performRequest(router, "GET", "/users/3")
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -66,8 +71,7 @@ func TestGetUserNotFound(t *testing.T) {
 func TestCreateUser(t *testing.T) {
 	t.Parallel()
 
-	router := gin.Default()
-	router.POST("/users", createUser)
+	router := setupRouter(seedStore())
 
 	payload := `{"id":"3","name":"Charlie","age":25}`
 	reader := strings.NewReader(payload)
