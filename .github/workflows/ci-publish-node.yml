@@ -50,6 +50,6 @@ jobs:
 
       - name: Publish
         working-directory: ${{ inputs.workdir }}
-        run: pnpm publish --no-git-checks --access public --tag latest
+        run: pnpm publish --no-git-checks --access public --tag ${{ steps.version.outputs.channel }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

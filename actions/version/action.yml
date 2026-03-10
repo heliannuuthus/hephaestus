@@ -15,8 +15,11 @@ outputs:
     description: Project name
     value: ${{ steps.extract.outputs.project }}
   version:
-    description: Project version (tag-shortsha)
+    description: Project version (tag-shortsha for dev, clean tag for release)
     value: ${{ steps.extract.outputs.version }}
+  channel:
+    description: "Publish channel: latest (exact tag match) or next (dev build)"
+    value: ${{ steps.extract.outputs.channel }}
 
 runs:
   using: composite
@@ -26,9 +29,18 @@ runs:
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: |
-        version=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.1.0")
-        version=${version#v}
-        version="$version-$(git rev-parse --short HEAD)"
+        head_sha=$(git rev-parse HEAD)
+        tag_sha=$(git rev-list --tags --max-count=1 2>/dev/null || echo "")
+        tag_name=$(git describe --tags "$tag_sha" 2>/dev/null || echo "v0.1.0")
+        base_version=${tag_name#v}
+
+        if [ "$head_sha" = "$tag_sha" ]; then
+          version="$base_version"
+          channel="latest"
+        else
+          version="$base_version-$(git rev-parse --short HEAD)"
+          channel="next"
+        fi
 
         case "${{ inputs.lang }}" in
           go)
@@ -55,3 +67,4 @@ runs:
 
         echo "project=$project" >> "$GITHUB_OUTPUT"
         echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "channel=$channel" >> "$GITHUB_OUTPUT"
