@@ -20,9 +20,12 @@ func performRequest(r http.Handler, method, path string) *httptest.ResponseRecor
 }
 
 func TestGetUsers(t *testing.T) {
-	t.Parallel()
-
 	gin.SetMode(gin.DebugMode)
+
+	users = []User{
+		{ID: "1", Name: "Alice", Age: 30},
+		{ID: "2", Name: "Bob", Age: 35},
+	}
 
 	router := gin.Default()
 	router.GET("/users", getUsers)
@@ -64,7 +67,10 @@ func TestGetUserNotFound(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	t.Parallel()
+	users = []User{
+		{ID: "1", Name: "Alice", Age: 30},
+		{ID: "2", Name: "Bob", Age: 35},
+	}
 
 	router := gin.Default()
 	router.POST("/users", createUser)
