@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -37,6 +38,9 @@ jobs:
           node-version: ${{ inputs.node-version }}
           registry-url: ${{ inputs.registry-url }}
 
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
       - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
@@ -50,6 +54,4 @@ jobs:
 
       - name: Publish
         working-directory: ${{ inputs.workdir }}
-        run: pnpm publish --no-git-checks --access public --tag ${{ steps.version.outputs.channel }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks --access public --provenance --tag ${{ steps.version.outputs.channel }}
