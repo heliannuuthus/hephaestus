@@ -15,7 +15,7 @@ on:
         description: Node.js version
       registry-url:
         required: false
-        default: "https://npm.pkg.github.com"
+        default: "https://registry.npmjs.org"
         type: string
         description: npm registry URL
 
@@ -26,6 +26,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: publish
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,4 +53,4 @@ jobs:
         working-directory: ${{ inputs.workdir }}
         run: pnpm publish --no-git-checks --access public --tag ${{ steps.version.outputs.channel }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
