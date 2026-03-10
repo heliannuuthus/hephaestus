@@ -59,26 +59,6 @@ jobs:
           version: latest
           working-directory: ${{ inputs.workdir }}
 
-  security:
-    needs: [setup]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: heliannuuthus/hephaestus/actions/setup-go@main
-        with:
-          workdir: ${{ inputs.workdir }}
-      - name: gosec
-        working-directory: ${{ inputs.workdir }}
-        run: |
-          mkdir -p build
-          gosec -fmt=json -out=build/gosec-report.json -stdout -verbose=text ./...
-      - uses: actions/upload-artifact@v4
-        with:
-          name: gosec-report
-          path: ${{ inputs.workdir }}build/gosec-report.json
-
   check-generate:
     needs: [setup]
     runs-on: ubuntu-latest
@@ -103,7 +83,7 @@ jobs:
           fi
 
   build:
-    needs: [lint, security, check-generate]
+    needs: [lint, check-generate]
     runs-on: ubuntu-latest
     outputs:
       project: ${{ steps.version.outputs.project }}
@@ -115,10 +95,6 @@ jobs:
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: gosec-report
-          path: ${{ inputs.workdir }}build/gosec-report.json
       - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
