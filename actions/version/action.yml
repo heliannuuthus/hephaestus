@@ -18,7 +18,7 @@ outputs:
     description: Project version (tag-shortsha for dev, clean tag for release)
     value: ${{ steps.extract.outputs.version }}
   channel:
-    description: "Publish channel: latest (exact tag match) or next (dev build)"
+    description: "Publish channel: latest (exact tag match) or dev (dev build)"
     value: ${{ steps.extract.outputs.channel }}
 
 runs:
@@ -39,7 +39,7 @@ runs:
           channel="latest"
         else
           version="$base_version-$(git rev-parse --short HEAD)"
-          channel="next"
+          channel="dev"
         fi
 
         case "${{ inputs.lang }}" in
