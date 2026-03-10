@@ -10,6 +10,10 @@ inputs:
     description: Node.js version
     required: false
     default: "lts/*"
+  registry-url:
+    description: npm registry URL (set to enable auth via NODE_AUTH_TOKEN)
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -17,6 +21,7 @@ runs:
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url || '' }}
 
     - uses: pnpm/action-setup@v4
       with:

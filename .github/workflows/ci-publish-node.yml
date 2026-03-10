@@ -1,0 +1,55 @@
+name: Publish Node Package
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+      node-version:
+        required: false
+        default: "lts/*"
+        type: string
+        description: Node.js version
+      registry-url:
+        required: false
+        default: "https://npm.pkg.github.com"
+        type: string
+        description: npm registry URL
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: heliannuuthus/hephaestus/actions/setup-node@main
+        with:
+          workdir: ${{ inputs.workdir }}
+          node-version: ${{ inputs.node-version }}
+          registry-url: ${{ inputs.registry-url }}
+
+      - uses: heliannuuthus/hephaestus/actions/version@main
+        id: version
+        with:
+          workdir: ${{ inputs.workdir }}
+          lang: node
+
+      - name: Set publish version
+        shell: bash
+        working-directory: ${{ inputs.workdir }}
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version
+
+      - name: Publish
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
