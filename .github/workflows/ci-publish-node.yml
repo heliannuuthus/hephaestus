@@ -50,7 +50,7 @@ jobs:
       - name: Set publish version
         shell: bash
         working-directory: ${{ inputs.workdir }}
-        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Publish
         working-directory: ${{ inputs.workdir }}
