@@ -30,14 +30,16 @@ runs:
       working-directory: ${{ inputs.workdir }}
       run: |
         head_sha=$(git rev-parse HEAD)
-        tag_sha=$(git rev-list --tags --max-count=1 2>/dev/null || echo "")
-        tag_name=$(git describe --tags "$tag_sha" 2>/dev/null || echo "v0.1.0")
-        base_version=${tag_name#v}
 
-        if [ "$head_sha" = "$tag_sha" ]; then
+        exact_tag=$(git tag --points-at HEAD --sort=-v:refname | grep '^v' | head -n 1 || echo "")
+
+        if [ -n "$exact_tag" ]; then
+          base_version=${exact_tag#v}
           version="$base_version"
           channel="latest"
         else
+          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1 || echo "v0.1.0")
+          base_version=${latest_tag#v}
           version="$base_version-$(git rev-parse --short HEAD)"
           channel="dev"
         fi
