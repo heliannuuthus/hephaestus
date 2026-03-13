@@ -1,0 +1,82 @@
+name: CI Golang Library
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect Go version
+        id: gomod
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          mod=$(find . -name "go.mod" -not -path "./vendor/*" | head -n 1)
+          echo "go-mod-path=${{ inputs.workdir }}${mod#./}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ steps.gomod.outputs.go-mod-path }}
+      - name: Lint all modules
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin"
+          for dir in $(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \; | sort); do
+            module_name=$(basename "$dir")
+            echo "::group::Linting module: $module_name ($dir)"
+            (cd "$dir" && golangci-lint run ./...)
+            echo "::endgroup::"
+          done
+
+  test:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect Go version
+        id: gomod
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          mod=$(find . -name "go.mod" -not -path "./vendor/*" | head -n 1)
+          echo "go-mod-path=${{ inputs.workdir }}${mod#./}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ steps.gomod.outputs.go-mod-path }}
+      - name: Install gotestsum
+        shell: bash
+        run: go install gotest.tools/gotestsum@latest
+      - name: Test all modules
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          mkdir -p build/test-results
+          for dir in $(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \; | sort); do
+            module_name=$(basename "$dir")
+            echo "::group::Testing module: $module_name ($dir)"
+            gotestsum --format testname \
+              --junitfile "build/test-results/$module_name-report.xml" \
+              --jsonfile "build/test-results/$module_name-test.json" \
+              --packages="$dir/..." \
+              -- -coverprofile="build/test-results/$module_name-coverage.out" \
+              -covermode count
+            echo "::endgroup::"
+          done
+          echo 'mode: count' > build/coverage.out
+          find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ${{ inputs.workdir }}build/
