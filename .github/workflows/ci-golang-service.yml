@@ -28,6 +28,11 @@ on:
         default: "go generate ./..."
         type: string
         description: Commands to run for code generation (e.g. wire, swag, protoc)
+      goprivate:
+        required: false
+        default: ""
+        type: string
+        description: GOPRIVATE pattern for private Go modules (e.g. github.com/org/*)
     outputs:
       version:
         value: ${{ jobs.build.outputs.version }}
@@ -47,10 +52,15 @@ jobs:
   lint:
     needs: [setup]
     runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: ${{ inputs.goprivate }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Configure private modules
+        if: inputs.goprivate != ''
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
@@ -62,10 +72,15 @@ jobs:
   check-generate:
     needs: [setup]
     runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: ${{ inputs.goprivate }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Configure private modules
+        if: inputs.goprivate != ''
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
@@ -85,6 +100,8 @@ jobs:
   build:
     needs: [lint, check-generate]
     runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: ${{ inputs.goprivate }}
     outputs:
       project: ${{ steps.version.outputs.project }}
       version: ${{ steps.version.outputs.version }}
@@ -92,6 +109,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Configure private modules
+        if: inputs.goprivate != ''
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
