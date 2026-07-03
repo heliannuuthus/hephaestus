@@ -25,54 +25,54 @@ on:
         description: Main package relative path
       go-version-file:
         required: false
-        default: "go.mod"
+        default: ""
         type: string
-        description: Go version file relative to workdir
+        description: Optional override for the Go version file relative to workdir
       cache-dependency-path:
         required: false
-        default: "go.sum"
+        default: ""
         type: string
-        description: Go cache dependency path relative to workdir
+        description: Optional override for the Go cache dependency path relative to workdir
       prepare-commands:
         required: false
         default: ""
         type: string
-        description: Commands to run after checkout and before Go commands
+        description: Deprecated compatibility input; prefer repository variables or local replace auto-discovery
       install-buf:
         required: false
         default: false
         type: boolean
-        description: Install buf before generation
+        description: Optional override to install buf before generation
       generate-target:
         required: false
         default: ""
         type: string
-        description: Make target for generation checks; empty runs go generate ./...
+        description: Optional make target for generation checks
       generate-commands:
         required: false
         default: ""
         type: string
-        description: Deprecated compatibility input; prefer generate-target for make-based generation
+        description: Deprecated compatibility input; prefer generate-target or Makefile auto-discovery
       build-target:
         required: false
-        default: "build"
+        default: ""
         type: string
-        description: Make target used when go-version-file is go.work
+        description: Optional make target used when go.work is detected
       test-target:
         required: false
-        default: "test"
+        default: ""
         type: string
-        description: Make target used when go-version-file is go.work
+        description: Optional make target used when go.work is detected
       make-shell:
         required: false
-        default: "/bin/bash"
+        default: ""
         type: string
-        description: Shell passed to make for workspace targets
+        description: Optional shell passed to make for workspace targets
       artifact-path:
         required: false
         default: ""
         type: string
-        description: Build artifact path to upload
+        description: Optional build artifact path to upload
       goprivate:
         required: false
         default: ""
@@ -86,15 +86,116 @@ on:
 jobs:
   setup:
     runs-on: ubuntu-latest
+    outputs:
+      artifact-path: ${{ steps.config.outputs.artifact-path }}
+      build-target: ${{ steps.config.outputs.build-target }}
+      cache-dependency-path: ${{ steps.config.outputs.cache-dependency-path }}
+      generate-target: ${{ steps.config.outputs.generate-target }}
+      go-mode: ${{ steps.config.outputs.go-mode }}
+      go-version-file: ${{ steps.config.outputs.go-version-file }}
+      install-buf: ${{ steps.config.outputs.install-buf }}
+      make-shell: ${{ steps.config.outputs.make-shell }}
+      test-target: ${{ steps.config.outputs.test-target }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - id: config
+        name: Detect Go project shape
+        shell: bash
+        env:
+          INPUT_ARTIFACT_PATH: ${{ inputs.artifact-path }}
+          INPUT_BUILD_TARGET: ${{ inputs.build-target }}
+          INPUT_CACHE_DEPENDENCY_PATH: ${{ inputs.cache-dependency-path }}
+          INPUT_GENERATE_TARGET: ${{ inputs.generate-target }}
+          INPUT_GO_VERSION_FILE: ${{ inputs.go-version-file }}
+          INPUT_INSTALL_BUF: ${{ inputs.install-buf }}
+          INPUT_MAKE_SHELL: ${{ inputs.make-shell }}
+          INPUT_TEST_TARGET: ${{ inputs.test-target }}
+          VAR_ARTIFACT_PATH: ${{ vars.HEPHAESTUS_ARTIFACT_PATH }}
+          VAR_BUILD_TARGET: ${{ vars.HEPHAESTUS_BUILD_TARGET }}
+          VAR_CACHE_DEPENDENCY_PATH: ${{ vars.HEPHAESTUS_CACHE_DEPENDENCY_PATH }}
+          VAR_GENERATE_TARGET: ${{ vars.HEPHAESTUS_GENERATE_TARGET }}
+          VAR_GO_VERSION_FILE: ${{ vars.HEPHAESTUS_GO_VERSION_FILE }}
+          VAR_INSTALL_BUF: ${{ vars.HEPHAESTUS_INSTALL_BUF }}
+          VAR_MAKE_SHELL: ${{ vars.HEPHAESTUS_MAKE_SHELL }}
+          VAR_TEST_TARGET: ${{ vars.HEPHAESTUS_TEST_TARGET }}
+          WORKDIR: ${{ inputs.workdir }}
+        run: |
+          set -euo pipefail
+
+          prefix="$WORKDIR"
+          case "$prefix" in
+            */) ;;
+            *) prefix="$prefix/" ;;
+          esac
+
+          go_version_file="${INPUT_GO_VERSION_FILE:-${VAR_GO_VERSION_FILE:-}}"
+          if [ -z "$go_version_file" ]; then
+            if [ -f "${prefix}go.work" ]; then
+              go_version_file="go.work"
+            else
+              go_version_file="go.mod"
+            fi
+          fi
+
+          go_mode="module"
+          if [ "${go_version_file##*/}" = "go.work" ]; then
+            go_mode="workspace"
+          fi
+
+          cache_dependency_path="${INPUT_CACHE_DEPENDENCY_PATH:-${VAR_CACHE_DEPENDENCY_PATH:-}}"
+          if [ -z "$cache_dependency_path" ]; then
+            if [ "$go_mode" = "workspace" ]; then
+              cache_dependency_path="**/go.sum"
+            else
+              cache_dependency_path="go.sum"
+            fi
+          fi
+
+          artifact_path="${INPUT_ARTIFACT_PATH:-${VAR_ARTIFACT_PATH:-}}"
+          if [ -z "$artifact_path" ]; then
+            if [ "$go_mode" = "workspace" ]; then
+              artifact_path="bin/"
+            else
+              artifact_path="build/"
+            fi
+          fi
+
+          generate_target="${INPUT_GENERATE_TARGET:-${VAR_GENERATE_TARGET:-}}"
+          if [ -z "$generate_target" ] && [ -f "${prefix}Makefile" ] && grep -Eq '^check-generate:' "${prefix}Makefile"; then
+            generate_target="check-generate"
+          fi
+
+          install_buf="${INPUT_INSTALL_BUF:-${VAR_INSTALL_BUF:-}}"
+          if [ -z "$install_buf" ] || [ "$install_buf" = "false" ]; then
+            if find "$prefix" -name "buf.yaml" -o -name "buf.gen.yaml" -o -name "buf.work.yaml" | grep -q .; then
+              install_buf="true"
+            else
+              install_buf="false"
+            fi
+          fi
+
+          build_target="${INPUT_BUILD_TARGET:-${VAR_BUILD_TARGET:-build}}"
+          test_target="${INPUT_TEST_TARGET:-${VAR_TEST_TARGET:-test}}"
+          make_shell="${INPUT_MAKE_SHELL:-${VAR_MAKE_SHELL:-/bin/bash}}"
+
+          {
+            echo "artifact-path=$artifact_path"
+            echo "build-target=$build_target"
+            echo "cache-dependency-path=$cache_dependency_path"
+            echo "generate-target=$generate_target"
+            echo "go-mode=$go_mode"
+            echo "go-version-file=$go_version_file"
+            echo "install-buf=$install_buf"
+            echo "make-shell=$make_shell"
+            echo "test-target=$test_target"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          go-version-file: ${{ inputs.workdir }}${{ steps.config.outputs.go-version-file }}
           cache: true
-          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
+          cache-dependency-path: ${{ inputs.workdir }}${{ steps.config.outputs.cache-dependency-path }}
 
   lint:
     needs: [setup]
@@ -108,26 +209,61 @@ jobs:
       - name: Configure private modules
         if: inputs.goprivate != ''
         run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
-      - name: Prepare workspace
-        if: inputs.prepare-commands != ''
+      - name: Prepare local replace modules
         shell: bash
-        run: ${{ inputs.prepare-commands }}
+        env:
+          HEPHAESTUS_AEGIS_GO_REF: ${{ vars.HEPHAESTUS_AEGIS_GO_REF }}
+          PREPARE_COMMANDS: ${{ inputs.prepare-commands || vars.HEPHAESTUS_PREPARE_COMMANDS }}
+          WORKDIR: ${{ inputs.workdir }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PREPARE_COMMANDS" ]; then
+            eval "$PREPARE_COMMANDS"
+          fi
+
+          prefix="$WORKDIR"
+          case "$prefix" in
+            */) ;;
+            *) prefix="$prefix/" ;;
+          esac
+
+          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+\.\./\.\./[^[:space:]]+' {} + 2>/dev/null \
+            | sed -E 's/.*=>[[:space:]]+\.\.\/\.\.\/([^[:space:]\/]+).*/\1/' \
+            | sort -u || true)
+
+          while IFS= read -r repo; do
+            [ -n "$repo" ] || continue
+            if [ ! -d "../$repo/.git" ]; then
+              git clone "https://github.com/heliannuuthus/$repo.git" "../$repo"
+            fi
+
+            ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
+            ref="${!ref_name:-}"
+            if [ -z "$ref" ]; then
+              ref=$(grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null \
+                | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
+                | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
+            fi
+            if [ -n "$ref" ]; then
+              git -C "../$repo" checkout "$ref"
+            fi
+          done <<< "$repos"
       - uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          go-version-file: ${{ inputs.workdir }}${{ needs.setup.outputs.go-version-file }}
           cache: true
-          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
+          cache-dependency-path: ${{ inputs.workdir }}${{ needs.setup.outputs.cache-dependency-path }}
       - uses: golangci/golangci-lint-action@v7
-        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'module'
         with:
           version: latest
           working-directory: ${{ inputs.workdir }}
       - name: Install golangci-lint
-        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'workspace'
         shell: bash
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin"
       - name: Lint workspace modules
-        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'workspace'
         working-directory: ${{ inputs.workdir }}
         shell: bash
         run: |
@@ -149,17 +285,52 @@ jobs:
       - name: Configure private modules
         if: inputs.goprivate != ''
         run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
-      - name: Prepare workspace
-        if: inputs.prepare-commands != ''
+      - name: Prepare local replace modules
         shell: bash
-        run: ${{ inputs.prepare-commands }}
+        env:
+          HEPHAESTUS_AEGIS_GO_REF: ${{ vars.HEPHAESTUS_AEGIS_GO_REF }}
+          PREPARE_COMMANDS: ${{ inputs.prepare-commands || vars.HEPHAESTUS_PREPARE_COMMANDS }}
+          WORKDIR: ${{ inputs.workdir }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PREPARE_COMMANDS" ]; then
+            eval "$PREPARE_COMMANDS"
+          fi
+
+          prefix="$WORKDIR"
+          case "$prefix" in
+            */) ;;
+            *) prefix="$prefix/" ;;
+          esac
+
+          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+\.\./\.\./[^[:space:]]+' {} + 2>/dev/null \
+            | sed -E 's/.*=>[[:space:]]+\.\.\/\.\.\/([^[:space:]\/]+).*/\1/' \
+            | sort -u || true)
+
+          while IFS= read -r repo; do
+            [ -n "$repo" ] || continue
+            if [ ! -d "../$repo/.git" ]; then
+              git clone "https://github.com/heliannuuthus/$repo.git" "../$repo"
+            fi
+
+            ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
+            ref="${!ref_name:-}"
+            if [ -z "$ref" ]; then
+              ref=$(grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null \
+                | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
+                | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
+            fi
+            if [ -n "$ref" ]; then
+              git -C "../$repo" checkout "$ref"
+            fi
+          done <<< "$repos"
       - uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          go-version-file: ${{ inputs.workdir }}${{ needs.setup.outputs.go-version-file }}
           cache: true
-          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
+          cache-dependency-path: ${{ inputs.workdir }}${{ needs.setup.outputs.cache-dependency-path }}
       - name: Install buf
-        if: inputs.install-buf
+        if: needs.setup.outputs.install-buf == 'true'
         shell: bash
         run: go install github.com/bufbuild/buf/cmd/buf@latest
       - name: Run generate
@@ -167,8 +338,8 @@ jobs:
         shell: bash
         env:
           GENERATE_COMMANDS: ${{ inputs.generate-commands }}
-          GENERATE_TARGET: ${{ inputs.generate-target }}
-          MAKE_SHELL: ${{ inputs.make-shell }}
+          GENERATE_TARGET: ${{ needs.setup.outputs.generate-target }}
+          MAKE_SHELL: ${{ needs.setup.outputs.make-shell }}
         run: |
           if [ -n "$GENERATE_COMMANDS" ]; then
             eval "$GENERATE_COMMANDS"
@@ -189,7 +360,7 @@ jobs:
           fi
 
   build:
-    needs: [lint, check-generate]
+    needs: [setup, lint, check-generate]
     runs-on: ubuntu-latest
     env:
       GOPRIVATE: ${{ inputs.goprivate }}
@@ -203,41 +374,76 @@ jobs:
       - name: Configure private modules
         if: inputs.goprivate != ''
         run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
-      - name: Prepare workspace
-        if: inputs.prepare-commands != ''
+      - name: Prepare local replace modules
         shell: bash
-        run: ${{ inputs.prepare-commands }}
+        env:
+          HEPHAESTUS_AEGIS_GO_REF: ${{ vars.HEPHAESTUS_AEGIS_GO_REF }}
+          PREPARE_COMMANDS: ${{ inputs.prepare-commands || vars.HEPHAESTUS_PREPARE_COMMANDS }}
+          WORKDIR: ${{ inputs.workdir }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PREPARE_COMMANDS" ]; then
+            eval "$PREPARE_COMMANDS"
+          fi
+
+          prefix="$WORKDIR"
+          case "$prefix" in
+            */) ;;
+            *) prefix="$prefix/" ;;
+          esac
+
+          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+\.\./\.\./[^[:space:]]+' {} + 2>/dev/null \
+            | sed -E 's/.*=>[[:space:]]+\.\.\/\.\.\/([^[:space:]\/]+).*/\1/' \
+            | sort -u || true)
+
+          while IFS= read -r repo; do
+            [ -n "$repo" ] || continue
+            if [ ! -d "../$repo/.git" ]; then
+              git clone "https://github.com/heliannuuthus/$repo.git" "../$repo"
+            fi
+
+            ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
+            ref="${!ref_name:-}"
+            if [ -z "$ref" ]; then
+              ref=$(grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null \
+                | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
+                | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
+            fi
+            if [ -n "$ref" ]; then
+              git -C "../$repo" checkout "$ref"
+            fi
+          done <<< "$repos"
       - uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          go-version-file: ${{ inputs.workdir }}${{ needs.setup.outputs.go-version-file }}
           cache: true
-          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
+          cache-dependency-path: ${{ inputs.workdir }}${{ needs.setup.outputs.cache-dependency-path }}
       - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
           workdir: ${{ inputs.workdir }}
           lang: go
       - name: Build binary
-        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'module'
         working-directory: ${{ inputs.workdir }}
         shell: bash
         run: |
           mkdir -p build
           CGO_ENABLED=0 GOOS=${{ inputs.GOOS }} GOARCH=${{ inputs.GOARCH }} go build -a -o build/${{ steps.version.outputs.project }} ${{ inputs.ENTRANCE }}
       - name: Build workspace
-        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'workspace'
         working-directory: ${{ inputs.workdir }}
         shell: bash
         env:
-          BUILD_TARGET: ${{ inputs.build-target }}
-          MAKE_SHELL: ${{ inputs.make-shell }}
+          BUILD_TARGET: ${{ needs.setup.outputs.build-target }}
+          MAKE_SHELL: ${{ needs.setup.outputs.make-shell }}
         run: make SHELL="$MAKE_SHELL" "$BUILD_TARGET"
       - name: Install gotestsum
-        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'module'
         shell: bash
         run: go install gotest.tools/gotestsum@latest
       - name: Test
-        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'module'
         working-directory: ${{ inputs.workdir }}
         shell: bash
         run: |
@@ -256,14 +462,14 @@ jobs:
           echo 'mode: count' > build/coverage.out
           find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
       - name: Test workspace
-        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
+        if: needs.setup.outputs.go-mode == 'workspace'
         working-directory: ${{ inputs.workdir }}
         shell: bash
         env:
-          TEST_TARGET: ${{ inputs.test-target }}
-          MAKE_SHELL: ${{ inputs.make-shell }}
+          MAKE_SHELL: ${{ needs.setup.outputs.make-shell }}
+          TEST_TARGET: ${{ needs.setup.outputs.test-target }}
         run: make SHELL="$MAKE_SHELL" "$TEST_TARGET"
       - uses: actions/upload-artifact@v4
         with:
           name: targets
-          path: ${{ inputs.artifact-path || format('{0}build/', inputs.workdir) }}
+          path: ${{ inputs.workdir }}${{ needs.setup.outputs.artifact-path }}
