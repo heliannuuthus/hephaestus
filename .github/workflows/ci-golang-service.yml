@@ -38,26 +38,36 @@ on:
         default: ""
         type: string
         description: Commands to run after checkout and before Go commands
-      lint-commands:
+      install-buf:
+        required: false
+        default: false
+        type: boolean
+        description: Install buf before generation
+      generate-target:
         required: false
         default: ""
         type: string
-        description: Commands to run instead of the default golangci-lint action
+        description: Make target for generation checks; empty runs go generate ./...
       generate-commands:
         required: false
-        default: "go generate ./..."
-        type: string
-        description: Commands to run for code generation (e.g. wire, swag, protoc)
-      build-commands:
-        required: false
         default: ""
         type: string
-        description: Commands to run instead of the default go build
-      test-commands:
+        description: Deprecated compatibility input; prefer generate-target for make-based generation
+      build-target:
         required: false
-        default: ""
+        default: "build"
         type: string
-        description: Commands to run instead of the default gotestsum test loop
+        description: Make target used when go-version-file is go.work
+      test-target:
+        required: false
+        default: "test"
+        type: string
+        description: Make target used when go-version-file is go.work
+      make-shell:
+        required: false
+        default: "/bin/bash"
+        type: string
+        description: Shell passed to make for workspace targets
       artifact-path:
         required: false
         default: ""
@@ -108,19 +118,24 @@ jobs:
           cache: true
           cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
       - uses: golangci/golangci-lint-action@v7
-        if: inputs.lint-commands == ''
+        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
         with:
           version: latest
           working-directory: ${{ inputs.workdir }}
       - name: Install golangci-lint
-        if: inputs.lint-commands != ''
+        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
         shell: bash
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin"
-      - name: Run lint
-        if: inputs.lint-commands != ''
+      - name: Lint workspace modules
+        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
         working-directory: ${{ inputs.workdir }}
         shell: bash
-        run: ${{ inputs.lint-commands }}
+        run: |
+          for dir in $(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \; | sort); do
+            echo "::group::Linting module: $dir"
+            (cd "$dir" && golangci-lint run ./...)
+            echo "::endgroup::"
+          done
 
   check-generate:
     needs: [setup]
@@ -143,10 +158,25 @@ jobs:
           go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
           cache: true
           cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
+      - name: Install buf
+        if: inputs.install-buf
+        shell: bash
+        run: go install github.com/bufbuild/buf/cmd/buf@latest
       - name: Run generate
         working-directory: ${{ inputs.workdir }}
         shell: bash
-        run: ${{ inputs.generate-commands }}
+        env:
+          GENERATE_COMMANDS: ${{ inputs.generate-commands }}
+          GENERATE_TARGET: ${{ inputs.generate-target }}
+          MAKE_SHELL: ${{ inputs.make-shell }}
+        run: |
+          if [ -n "$GENERATE_COMMANDS" ]; then
+            eval "$GENERATE_COMMANDS"
+          elif [ -n "$GENERATE_TARGET" ]; then
+            make SHELL="$MAKE_SHELL" "$GENERATE_TARGET"
+          else
+            go generate ./...
+          fi
       - name: Check for uncommitted changes
         working-directory: ${{ inputs.workdir }}
         shell: bash
@@ -188,23 +218,26 @@ jobs:
           workdir: ${{ inputs.workdir }}
           lang: go
       - name: Build binary
-        if: inputs.build-commands == ''
+        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
         working-directory: ${{ inputs.workdir }}
         shell: bash
         run: |
           mkdir -p build
           CGO_ENABLED=0 GOOS=${{ inputs.GOOS }} GOARCH=${{ inputs.GOARCH }} go build -a -o build/${{ steps.version.outputs.project }} ${{ inputs.ENTRANCE }}
-      - name: Build
-        if: inputs.build-commands != ''
+      - name: Build workspace
+        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
         working-directory: ${{ inputs.workdir }}
         shell: bash
-        run: ${{ inputs.build-commands }}
+        env:
+          BUILD_TARGET: ${{ inputs.build-target }}
+          MAKE_SHELL: ${{ inputs.make-shell }}
+        run: make SHELL="$MAKE_SHELL" "$BUILD_TARGET"
       - name: Install gotestsum
-        if: inputs.test-commands == ''
+        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
         shell: bash
         run: go install gotest.tools/gotestsum@latest
       - name: Test
-        if: inputs.test-commands == ''
+        if: ${{ !endsWith(inputs.go-version-file, 'go.work') }}
         working-directory: ${{ inputs.workdir }}
         shell: bash
         run: |
@@ -222,11 +255,14 @@ jobs:
           done
           echo 'mode: count' > build/coverage.out
           find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
-      - name: Test
-        if: inputs.test-commands != ''
+      - name: Test workspace
+        if: ${{ endsWith(inputs.go-version-file, 'go.work') }}
         working-directory: ${{ inputs.workdir }}
         shell: bash
-        run: ${{ inputs.test-commands }}
+        env:
+          TEST_TARGET: ${{ inputs.test-target }}
+          MAKE_SHELL: ${{ inputs.make-shell }}
+        run: make SHELL="$MAKE_SHELL" "$TEST_TARGET"
       - uses: actions/upload-artifact@v4
         with:
           name: targets
