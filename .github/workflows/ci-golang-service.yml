@@ -23,11 +23,46 @@ on:
         default: "./main.go"
         type: string
         description: Main package relative path
+      go-version-file:
+        required: false
+        default: "go.mod"
+        type: string
+        description: Go version file relative to workdir
+      cache-dependency-path:
+        required: false
+        default: "go.sum"
+        type: string
+        description: Go cache dependency path relative to workdir
+      prepare-commands:
+        required: false
+        default: ""
+        type: string
+        description: Commands to run after checkout and before Go commands
+      lint-commands:
+        required: false
+        default: ""
+        type: string
+        description: Commands to run instead of the default golangci-lint action
       generate-commands:
         required: false
         default: "go generate ./..."
         type: string
         description: Commands to run for code generation (e.g. wire, swag, protoc)
+      build-commands:
+        required: false
+        default: ""
+        type: string
+        description: Commands to run instead of the default go build
+      test-commands:
+        required: false
+        default: ""
+        type: string
+        description: Commands to run instead of the default gotestsum test loop
+      artifact-path:
+        required: false
+        default: ""
+        type: string
+        description: Build artifact path to upload
       goprivate:
         required: false
         default: ""
@@ -45,9 +80,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: heliannuuthus/hephaestus/actions/setup-go@main
+      - uses: actions/setup-go@v5
         with:
-          workdir: ${{ inputs.workdir }}
+          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          cache: true
+          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
 
   lint:
     needs: [setup]
@@ -61,13 +98,29 @@ jobs:
       - name: Configure private modules
         if: inputs.goprivate != ''
         run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
-      - uses: heliannuuthus/hephaestus/actions/setup-go@main
+      - name: Prepare workspace
+        if: inputs.prepare-commands != ''
+        shell: bash
+        run: ${{ inputs.prepare-commands }}
+      - uses: actions/setup-go@v5
         with:
-          workdir: ${{ inputs.workdir }}
+          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          cache: true
+          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
       - uses: golangci/golangci-lint-action@v7
+        if: inputs.lint-commands == ''
         with:
           version: latest
           working-directory: ${{ inputs.workdir }}
+      - name: Install golangci-lint
+        if: inputs.lint-commands != ''
+        shell: bash
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin"
+      - name: Run lint
+        if: inputs.lint-commands != ''
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: ${{ inputs.lint-commands }}
 
   check-generate:
     needs: [setup]
@@ -81,14 +134,22 @@ jobs:
       - name: Configure private modules
         if: inputs.goprivate != ''
         run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
-      - uses: heliannuuthus/hephaestus/actions/setup-go@main
+      - name: Prepare workspace
+        if: inputs.prepare-commands != ''
+        shell: bash
+        run: ${{ inputs.prepare-commands }}
+      - uses: actions/setup-go@v5
         with:
-          workdir: ${{ inputs.workdir }}
+          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          cache: true
+          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
       - name: Run generate
         working-directory: ${{ inputs.workdir }}
+        shell: bash
         run: ${{ inputs.generate-commands }}
       - name: Check for uncommitted changes
         working-directory: ${{ inputs.workdir }}
+        shell: bash
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             echo "::error::Generated code is out of date. Run generate commands locally and commit the changes."
@@ -112,21 +173,40 @@ jobs:
       - name: Configure private modules
         if: inputs.goprivate != ''
         run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
-      - uses: heliannuuthus/hephaestus/actions/setup-go@main
+      - name: Prepare workspace
+        if: inputs.prepare-commands != ''
+        shell: bash
+        run: ${{ inputs.prepare-commands }}
+      - uses: actions/setup-go@v5
         with:
-          workdir: ${{ inputs.workdir }}
+          go-version-file: ${{ inputs.workdir }}${{ inputs.go-version-file }}
+          cache: true
+          cache-dependency-path: ${{ inputs.workdir }}${{ inputs.cache-dependency-path }}
       - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:
           workdir: ${{ inputs.workdir }}
           lang: go
       - name: Build binary
+        if: inputs.build-commands == ''
         working-directory: ${{ inputs.workdir }}
+        shell: bash
         run: |
           mkdir -p build
           CGO_ENABLED=0 GOOS=${{ inputs.GOOS }} GOARCH=${{ inputs.GOARCH }} go build -a -o build/${{ steps.version.outputs.project }} ${{ inputs.ENTRANCE }}
-      - name: Test
+      - name: Build
+        if: inputs.build-commands != ''
         working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: ${{ inputs.build-commands }}
+      - name: Install gotestsum
+        if: inputs.test-commands == ''
+        shell: bash
+        run: go install gotest.tools/gotestsum@latest
+      - name: Test
+        if: inputs.test-commands == ''
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
         run: |
           mkdir -p build/test-results
           for dir in $(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \;); do
@@ -142,7 +222,12 @@ jobs:
           done
           echo 'mode: count' > build/coverage.out
           find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
+      - name: Test
+        if: inputs.test-commands != ''
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: ${{ inputs.test-commands }}
       - uses: actions/upload-artifact@v4
         with:
           name: targets
-          path: ${{ inputs.workdir }}build/
+          path: ${{ inputs.artifact-path || format('{0}build/', inputs.workdir) }}
