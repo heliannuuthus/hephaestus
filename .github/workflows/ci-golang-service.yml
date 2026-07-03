@@ -240,7 +240,7 @@ jobs:
             ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
             ref="${!ref_name:-}"
             if [ -z "$ref" ]; then
-              ref=$(grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null \
+              ref=$( (grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
                 | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
                 | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
             fi
@@ -316,7 +316,7 @@ jobs:
             ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
             ref="${!ref_name:-}"
             if [ -z "$ref" ]; then
-              ref=$(grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null \
+              ref=$( (grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
                 | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
                 | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
             fi
@@ -405,7 +405,7 @@ jobs:
             ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
             ref="${!ref_name:-}"
             if [ -z "$ref" ]; then
-              ref=$(grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null \
+              ref=$( (grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
                 | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
                 | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
             fi
