@@ -18,11 +18,33 @@ inputs:
 runs:
   using: composite
   steps:
+    - id: detect
+      name: Detect Go version file
+      shell: bash
+      run: |
+        workdir="${{ inputs.workdir }}"
+        case "$workdir" in
+          */) ;;
+          *) workdir="$workdir/" ;;
+        esac
+        echo "workdir=$workdir" >> "$GITHUB_OUTPUT"
+
+        if [ -f "${workdir}go.work" ]; then
+          echo "version_file=go.work" >> "$GITHUB_OUTPUT"
+        elif [ -f "${workdir}go.mod" ]; then
+          echo "version_file=go.mod" >> "$GITHUB_OUTPUT"
+        else
+          echo "::error::No go.work or go.mod found in ${{ inputs.workdir }}"
+          exit 1
+        fi
+
     - uses: actions/setup-go@v5
       with:
-        go-version-file: ${{ inputs.workdir }}go.mod
+        go-version-file: ${{ steps.detect.outputs.workdir }}${{ steps.detect.outputs.version_file }}
         cache: true
-        cache-dependency-path: ${{ inputs.workdir }}go.sum
+        cache-dependency-path: |
+          ${{ steps.detect.outputs.workdir }}go.sum
+          ${{ steps.detect.outputs.workdir }}**/go.sum
 
     - name: Install gosec
       shell: bash

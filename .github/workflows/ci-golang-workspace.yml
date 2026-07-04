@@ -1,0 +1,137 @@
+name: CI Golang Workspace
+
+on:
+  workflow_call:
+    inputs:
+      services:
+        required: true
+        type: string
+        description: 'JSON array of service names, e.g. ["hermes","aegis"]'
+      modules:
+        required: false
+        default: ""
+        type: string
+        description: 'Space-separated module dirs to lint/test (default: auto-detect from go.mod files)'
+      generate-commands:
+        required: false
+        default: ""
+        type: string
+        description: 'Commands to run for code generation (e.g. buf generate, swag init)'
+      goprivate:
+        required: false
+        default: ""
+        type: string
+        description: 'GOPRIVATE pattern for private Go modules'
+    outputs:
+      version:
+        value: ${{ jobs.version.outputs.version }}
+        description: Resolved version string
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      channel: ${{ steps.extract.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: extract
+        run: |
+          exact_tag=$(git tag --points-at HEAD --sort=-v:refname | grep '^v' | head -n 1 || echo "")
+          if [ -n "$exact_tag" ]; then
+            echo "version=${exact_tag#v}" >> "$GITHUB_OUTPUT"
+            echo "channel=latest" >> "$GITHUB_OUTPUT"
+          else
+            latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -n 1 || echo "v0.1.0")
+            echo "version=${latest_tag#v}-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+            echo "channel=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: ${{ inputs.goprivate }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure private modules
+        if: inputs.goprivate != ''
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
+      - uses: heliannuuthus/hephaestus/actions/setup-go@main
+      - name: Install golangci-lint
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin"
+      - name: Lint all modules
+        run: |
+          modules="${{ inputs.modules }}"
+          if [ -z "$modules" ]; then
+            modules=$(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \; | sort)
+          fi
+          failed=0
+          for dir in $modules; do
+            name=$(basename "$dir")
+            echo "::group::Lint $name"
+            (cd "$dir" && golangci-lint run ./...) || failed=1
+            echo "::endgroup::"
+          done
+          exit $failed
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: ${{ inputs.goprivate }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure private modules
+        if: inputs.goprivate != ''
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
+      - uses: heliannuuthus/hephaestus/actions/setup-go@main
+      - name: Test all modules
+        run: |
+          mkdir -p build/test-results
+          modules="${{ inputs.modules }}"
+          if [ -z "$modules" ]; then
+            modules=$(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \; | sort)
+          fi
+          for dir in $modules; do
+            name=$(basename "$dir")
+            echo "::group::Test $name"
+            gotestsum --format testname \
+              --junitfile "build/test-results/$name-report.xml" \
+              --packages="$dir/..." \
+              -- -coverprofile="build/test-results/$name-coverage.out" \
+              -covermode count
+            echo "::endgroup::"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: build/test-results/
+
+  check-generate:
+    if: inputs.generate-commands != ''
+    runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: ${{ inputs.goprivate }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure private modules
+        if: inputs.goprivate != ''
+        run: git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
+      - uses: heliannuuthus/hephaestus/actions/setup-go@main
+      - name: Run generate
+        run: ${{ inputs.generate-commands }}
+      - name: Check for uncommitted changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Generated code is out of date. Run generate commands locally and commit."
+            git diff --stat
+            exit 1
+          fi
