@@ -56,7 +56,7 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libwebkit2gtk-4.1-dev libglib2.0-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-          version: rust-tauri-ci
+          version: rust-tauri-ci-v2
           execute_install_scripts: true
 
       - uses: heliannuuthus/hephaestus/actions/setup-pnpm@main
