@@ -1,0 +1,113 @@
+name: Deploy Node to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+      node-version:
+        required: false
+        default: "lts/*"
+        type: string
+        description: Node.js version
+      build:
+        required: false
+        default: build
+        type: string
+        description: Build script name; set to empty to skip building
+      artifact-path:
+        required: false
+        default: dist
+        type: string
+        description: Static site output path relative to workdir
+      registry-url:
+        required: false
+        default: ""
+        type: string
+        description: npm registry URL for scoped package auth
+      environment:
+        required: false
+        default: github-pages
+        type: string
+        description: GitHub Pages deployment environment
+    outputs:
+      page-url:
+        value: ${{ jobs.deploy.outputs.page-url }}
+        description: Deployed GitHub Pages URL
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: heliannuuthus/hephaestus/actions/setup-pnpm@main
+        with:
+          workdir: ${{ inputs.workdir }}
+          node-version: ${{ inputs.node-version }}
+          registry-url: ${{ inputs.registry-url }}
+
+      - uses: actions/configure-pages@v5
+
+      - name: Build
+        if: inputs.build != ''
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm ${{ inputs.build }}
+
+      - name: Resolve artifact path
+        id: artifact
+        shell: bash
+        env:
+          ARTIFACT_PATH: ${{ inputs.artifact-path }}
+          WORKDIR: ${{ inputs.workdir }}
+        run: |
+          set -euo pipefail
+
+          workdir="$WORKDIR"
+          case "$workdir" in
+            */) ;;
+            *) workdir="$workdir/" ;;
+          esac
+
+          artifact_path="$ARTIFACT_PATH"
+          case "$artifact_path" in
+            /*) resolved="$artifact_path" ;;
+            *) resolved="$workdir$artifact_path" ;;
+          esac
+
+          if [ ! -d "$resolved" ]; then
+            echo "::error::GitHub Pages artifact path does not exist: $resolved"
+            exit 1
+          fi
+
+          echo "path=$resolved" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.artifact.outputs.path }}
+
+  deploy:
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page-url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

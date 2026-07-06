@@ -18,6 +18,7 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-rust.yml                   # setup → lint → build
 ├── ci-node.yml                   # setup → lint → build (backend)
 ├── ci-frontend.yml               # setup → lint → build (frontend)
+├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
@@ -69,6 +70,21 @@ jobs:
     uses: heliannuuthus/hephaestus/.github/workflows/ci-frontend.yml@main
     with:
       workdir: "./"
+```
+
+### Frontend GitHub Pages Deploy
+
+```yaml
+jobs:
+  deploy:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-deploy-pages.yml@main
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    with:
+      workdir: "./"
+      artifact-path: dist
 ```
 
 ### Node.js Backend
