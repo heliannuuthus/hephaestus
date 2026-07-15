@@ -62,16 +62,20 @@ jobs:
         working-directory: ${{ inputs.workdir }}
         shell: bash
         run: |
-          mkdir -p build/test-results
+          results_dir="$PWD/build/test-results"
+          mkdir -p "$results_dir"
           for dir in $(find . -name "go.mod" -not -path "./vendor/*" -exec dirname {} \; | sort); do
             module_name=$(basename "$dir")
             echo "::group::Testing module: $module_name ($dir)"
-            gotestsum --format testname \
-              --junitfile "build/test-results/$module_name-report.xml" \
-              --jsonfile "build/test-results/$module_name-test.json" \
-              --packages="$dir/..." \
-              -- -coverprofile="build/test-results/$module_name-coverage.out" \
-              -covermode count
+            (
+              cd "$dir"
+              gotestsum --format testname \
+                --junitfile "$results_dir/$module_name-report.xml" \
+                --jsonfile "$results_dir/$module_name-test.json" \
+                --packages="./..." \
+                -- -coverprofile="$results_dir/$module_name-coverage.out" \
+                -covermode count
+            )
             echo "::endgroup::"
           done
           echo 'mode: count' > build/coverage.out
