@@ -17,7 +17,7 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-golang.yml                 # setup → lint → security → build
 ├── ci-rust.yml                   # setup → lint → build
 ├── ci-node.yml                   # setup → lint → build (backend)
-├── ci-frontend.yml               # setup → lint → build (frontend)
+├── ci-frontend.yml               # setup → lint/type-check → build/test/pack
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
@@ -70,7 +70,13 @@ jobs:
     uses: heliannuuthus/hephaestus/.github/workflows/ci-frontend.yml@main
     with:
       workdir: "./"
+      type-check: type-check
+      pack: true
 ```
+
+`type-check`, `test`, and `pack` are opt-in so applications and publishable
+packages can share the same workflow. `type-check` and `test` name package
+scripts; `pack: true` validates the publishable tarball with `pnpm pack`.
 
 ### Frontend GitHub Pages Deploy
 
@@ -95,7 +101,28 @@ jobs:
     uses: heliannuuthus/hephaestus/.github/workflows/ci-node.yml@main
     with:
       workdir: "./"
+      format-check: format:check
+      type-check: type-check
+      test: test
+      pack: true
 ```
+
+### Node.js Package Publish
+
+```yaml
+jobs:
+  publish:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-publish-node.yml@main
+    permissions:
+      contents: read
+      id-token: write
+```
+
+The publish job uses the caller repository's `publish` environment. For a new
+package, temporarily add `NPM_TOKEN` to that environment to bootstrap the first
+release. Afterward, configure npm Trusted Publishing with the caller workflow
+filename and the `publish` environment, then remove the token. When no token is
+present, npm authenticates through GitHub OIDC.
 
 ### Rust Tauri
 
@@ -104,8 +131,18 @@ jobs:
   ci:
     uses: heliannuuthus/hephaestus/.github/workflows/ci-rust-tauri.yml@main
     permissions:
-      contents: write
-      packages: write
+      contents: read
     with:
       workdir: "./"
+      release: false
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ci]
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-rust-tauri.yml@main
+    permissions:
+      contents: write
+    with:
+      workdir: "./"
+      release: true
 ```

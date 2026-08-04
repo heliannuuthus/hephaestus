@@ -54,4 +54,11 @@ jobs:
 
       - name: Publish
         working-directory: ${{ inputs.workdir }}
-        run: pnpm publish --no-git-checks --access public --provenance --tag ${{ steps.version.outputs.channel }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            unset NODE_AUTH_TOKEN
+          fi
+
+          pnpm publish --no-git-checks --access public --provenance --tag ${{ steps.version.outputs.channel }}
