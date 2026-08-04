@@ -18,11 +18,26 @@ on:
         default: build
         type: string
         description: Build script name
+      format-check:
+        required: false
+        default: ""
+        type: string
+        description: Format-check script name; set to empty to skip
+      type-check:
+        required: false
+        default: ""
+        type: string
+        description: Type-check script name; set to empty to skip
       test:
         required: false
         default: ""
         type: string
         description: Test script name
+      pack:
+        required: false
+        default: false
+        type: boolean
+        description: Run pnpm pack after a successful build
       registry-url:
         required: false
         default: ""
@@ -57,6 +72,14 @@ jobs:
       - name: Lint
         working-directory: ${{ inputs.workdir }}
         run: pnpm lint
+      - name: Format check
+        if: inputs.format-check != ''
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm ${{ inputs.format-check }}
+      - name: Type check
+        if: inputs.type-check != ''
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm ${{ inputs.type-check }}
 
   build:
     needs: [lint]
@@ -81,6 +104,10 @@ jobs:
         if: inputs.test != ''
         working-directory: ${{ inputs.workdir }}
         run: pnpm ${{ inputs.test }}
+      - name: Pack
+        if: inputs.pack
+        working-directory: ${{ inputs.workdir }}
+        run: pnpm pack --pack-destination "$RUNNER_TEMP"
       - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
         with:

@@ -28,11 +28,14 @@ on:
         default: ""
         type: string
         description: Frontend test command
+      release:
+        required: false
+        default: true
+        type: boolean
+        description: Create a draft GitHub Release; set false for build-only CI
 
 jobs:
   build-tauri:
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -97,9 +100,9 @@ jobs:
         with:
           tauriScript: pnpm tauri
           projectPath: ${{ inputs.workdir }}
-          tagName: ${{ steps.version.outputs.project }}-v__VERSION__
-          releaseName: "${{ steps.version.outputs.project }} v__VERSION__"
-          releaseBody: ${{ github.event.head_commit.message }}
-          releaseDraft: true
+          tagName: ${{ inputs.release && format('{0}-v__VERSION__', steps.version.outputs.project) || '' }}
+          releaseName: ${{ inputs.release && format('{0} v__VERSION__', steps.version.outputs.project) || '' }}
+          releaseBody: ${{ inputs.release && github.event.head_commit.message || '' }}
+          releaseDraft: ${{ inputs.release }}
           prerelease: false
           args: --target ${{ matrix.target }}
