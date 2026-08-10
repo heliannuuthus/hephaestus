@@ -1,0 +1,56 @@
+name: CI Compose Integration
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Integration repository working directory
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: ${{ inputs.workdir }}scripts/requirements.txt
+      - name: Install script dependencies
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          if [ -f scripts/requirements.txt ]; then
+            python -m pip install -r scripts/requirements.txt
+          fi
+      - name: Test integration scripts
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          if find scripts -maxdepth 1 -name 'test_*.py' -print -quit 2>/dev/null | grep -q .; then
+            python -m unittest discover -s scripts -p 'test_*.py'
+          fi
+      - name: Validate Compose profiles
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          docker compose -f compose.yaml -f compose.dev.yaml config --quiet
+          docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+      - name: Verify submodule checkout
+        working-directory: ${{ inputs.workdir }}
+        shell: bash
+        run: |
+          status=$(git submodule status --recursive)
+          printf '%s\n' "$status"
+          if printf '%s\n' "$status" | grep -Eq '^[-+U]'; then
+            echo "::error::Submodule checkout does not match the recorded commits"
+            exit 1
+          fi
