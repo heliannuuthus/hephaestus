@@ -18,12 +18,29 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-rust.yml                   # setup → lint → build
 ├── ci-node.yml                   # setup → lint → build (backend)
 ├── ci-frontend.yml               # setup → lint/type-check → build/test/pack
+├── ci-compose-integration.yml    # submodules → scripts → Compose validation
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
 
 ## Usage
+
+### Compose integration repository
+
+```yaml
+jobs:
+  ci:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-compose-integration.yml@main
+    permissions:
+      contents: read
+    with:
+      workdir: "./"
+```
+
+The workflow checks out submodules, installs `scripts/requirements.txt` when
+present, runs `scripts/test_*.py`, and validates the development and production
+Compose overlays.
 
 ### Golang
 
