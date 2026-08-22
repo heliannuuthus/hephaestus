@@ -1,0 +1,110 @@
+name: CI Promote GitOps
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+        description: Stable semantic version without a v prefix
+      updates:
+        required: true
+        type: string
+        description: Newline-delimited overlay-file=image mappings
+      repository:
+        required: false
+        default: heliantheon/applications
+        type: string
+        description: Private GitOps repository to update
+    secrets:
+      gitops_token:
+        required: true
+        description: Fine-grained token or GitHub App token with repository write access
+
+concurrency:
+  group: gitops-${{ inputs.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate promotion request
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          UPDATES: ${{ inputs.updates }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::Only stable semantic versions can be promoted"
+            exit 1
+          }
+          while IFS='=' read -r file image; do
+            [[ -n "$file" && -n "$image" ]] || continue
+            [[ "$file" =~ ^[a-z0-9-]+/overlay/release(-[a-z0-9-]+)?\.yaml$ ]] || {
+              echo "::error::Update target must be a component overlay release file: $file"
+              exit 1
+            }
+            [[ "$image" =~ ^ghcr\.io/[a-z0-9._-]+/[a-z0-9._-]+$ ]] || {
+              echo "::error::Unsupported image name: $image"
+              exit 1
+            }
+          done <<<"$UPDATES"
+
+      - name: Check out GitOps desired state
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: main
+          token: ${{ secrets.gitops_token }}
+          fetch-depth: 0
+
+      - name: Update overlay release files
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          UPDATES: ${{ inputs.updates }}
+        run: |
+          set -euo pipefail
+          while IFS='=' read -r file image; do
+            [[ -n "$file" && -n "$image" ]] || continue
+            [[ -f "$file" ]] || {
+              echo "::error::Overlay release file does not exist: $file"
+              exit 1
+            }
+            IMAGE="$image" FILE="$file" python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path(os.environ["FILE"])
+          image = os.environ["IMAGE"]
+          version = os.environ["VERSION"]
+          source = path.read_text()
+          pattern = re.compile(rf"^(\s+image:\s+){re.escape(image)}:[^\s]+\s*$", re.MULTILINE)
+          updated, count = pattern.subn(rf"\g<1>{image}:{version}", source)
+          if count != 1:
+              raise SystemExit(f"expected exactly one {image} image in {path}, found {count}")
+          path.write_text(updated)
+          PY
+          done <<<"$UPDATES"
+
+      - name: Commit desired state
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Desired state already references $VERSION"
+            exit 0
+          fi
+          git config user.name "heliantheon-release[bot]"
+          git config user.email "heliantheon-release[bot]@users.noreply.github.com"
+          git add --update
+          git commit -m "chore(release): promote applications to $VERSION"
+          git push origin HEAD:main
