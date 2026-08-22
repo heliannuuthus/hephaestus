@@ -1,0 +1,75 @@
+name: CI Containerize Source
+
+on:
+  workflow_call:
+    inputs:
+      manifest:
+        required: false
+        default: .hephaestus/containers.json
+        type: string
+        description: JSON container build manifest relative to the repository root
+      version:
+        required: true
+        type: string
+        description: Immutable image version tag
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        name: Validate container build manifest
+        shell: bash
+        env:
+          MANIFEST: ${{ inputs.manifest }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "$MANIFEST" ]; then
+            echo "::error::Container manifest not found: $MANIFEST"
+            exit 1
+          fi
+
+          jq -e '
+            type == "array" and length > 0 and
+            all(.[ ];
+              (.image | type == "string" and length > 0) and
+              (.context | type == "string" and length > 0) and
+              ((.dockerfile // "Dockerfile") | type == "string" and length > 0) and
+              ((.buildArgs // "") | type == "string")
+            )
+          ' "$MANIFEST" >/dev/null
+
+          matrix=$(jq -c '{include: map({
+            image,
+            context,
+            dockerfile: (.dockerfile // "Dockerfile"),
+            build_args: (.buildArgs // "")
+          })}' "$MANIFEST")
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  containerize:
+    needs: [plan]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: heliannuuthus/hephaestus/actions/containerize@main
+        with:
+          context: ${{ matrix.context }}
+          dockerfile: ${{ matrix.dockerfile }}
+          image-name: ${{ matrix.image }}
+          build-args: ${{ matrix.build_args }}
+          release-tags: true
+          version: ${{ inputs.version }}

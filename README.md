@@ -20,6 +20,7 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-frontend.yml               # setup → lint/type-check → build/test/pack
 ├── ci-compose-integration.yml    # submodules → scripts → Compose validation
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
+├── ci-containerize-source.yml    # source tree → one or more GHCR images
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
@@ -109,6 +110,46 @@ jobs:
       workdir: "./"
       artifact-path: dist
 ```
+
+### Frontend container delivery
+
+Frontend repositories can declare one or more source-built images in
+`.hephaestus/containers.json`:
+
+```json
+[
+  {
+    "image": "ghcr.io/heliannuuthus/example-web",
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "buildArgs": "APP=portal"
+  }
+]
+```
+
+The caller remains a thin reusable-workflow invocation:
+
+```yaml
+jobs:
+  ci:
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-frontend.yml@main
+
+  containerize:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ci]
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-containerize-source.yml@main
+    permissions:
+      contents: read
+      packages: write
+    with:
+      manifest: .hephaestus/containers.json
+      version: ${{ needs.ci.outputs.version }}
+```
+
+Source container workflows and callers that set `release-tags: true` publish
+the exact release version plus a `sha-*` traceability tag. Existing artifact
+callers retain their legacy prerelease tagging until they opt in. New release
+callers invoke delivery only for `v*` tags.
 
 ### Node.js Backend
 

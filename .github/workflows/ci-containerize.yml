@@ -8,18 +8,59 @@ on:
         default: "./"
         type: string
         description: Working directory (Dockerfile location)
+      context:
+        required: false
+        default: ""
+        type: string
+        description: Docker build context relative to the repository root
+      dockerfile:
+        required: false
+        default: Dockerfile
+        type: string
+        description: Dockerfile path relative to the build context
+      image-name:
+        required: false
+        default: ""
+        type: string
+        description: Fully qualified image name
+      build-args:
+        required: false
+        default: ""
+        type: string
+        description: Optional newline-delimited Docker build arguments
+      release-tags:
+        required: false
+        default: false
+        type: boolean
+        description: Publish the exact version plus sha-* tags
       version:
         required: true
         type: string
         description: Image version tag
       targets:
-        required: true
+        required: false
+        default: ""
         type: string
-        description: Build artifact download path
+        description: Optional build artifact download path
+      artifact-name:
+        required: false
+        default: targets
+        type: string
+        description: Artifact name used when targets is set
+    outputs:
+      image:
+        value: ${{ jobs.containerize.outputs.image }}
+        description: Published image name
+      digest:
+        value: ${{ jobs.containerize.outputs.digest }}
+        description: Published image digest
 
 jobs:
   containerize:
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.containerize.outputs.image }}
+      digest: ${{ steps.containerize.outputs.digest }}
     permissions:
       contents: read
       packages: write
@@ -27,8 +68,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: heliannuuthus/hephaestus/actions/containerize@main
+      - id: containerize
+        uses: heliannuuthus/hephaestus/actions/containerize@main
         with:
           workdir: ${{ inputs.workdir }}
+          context: ${{ inputs.context }}
+          dockerfile: ${{ inputs.dockerfile }}
+          image-name: ${{ inputs.image-name }}
+          build-args: ${{ inputs.build-args }}
+          release-tags: ${{ inputs.release-tags }}
           version: ${{ inputs.version }}
           targets: ${{ inputs.targets }}
+          artifact-name: ${{ inputs.artifact-name }}
