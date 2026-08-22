@@ -227,22 +227,26 @@ jobs:
             *) prefix="$prefix/" ;;
           esac
 
-          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+\.\./\.\./[^[:space:]]+' {} + 2>/dev/null \
-            | sed -E 's/.*=>[[:space:]]+\.\.\/\.\.\/([^[:space:]\/]+).*/\1/' \
+          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+(\.\./)+[^[:space:]]+' {} + 2>/dev/null \
+            | sed -E 's#.*=>[[:space:]]+(\.\./)+([^[:space:]/]+).*#\2#' \
             | sort -u || true)
 
           while IFS= read -r repo; do
             [ -n "$repo" ] || continue
+            module=$( (grep -hE "github.com/[^/]+/$repo([/[:space:]])" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
+              | sed -nE "s#.*(github.com/[^/]+/$repo)(/[^[:space:]]*)?[[:space:]].*#\1#p" \
+              | head -n 1)
+            [ -n "$module" ] || module="github.com/heliannuuthus/$repo"
             if [ ! -d "../$repo/.git" ]; then
-              git clone "https://github.com/heliannuuthus/$repo.git" "../$repo"
+              git clone "https://$module.git" "../$repo"
             fi
 
             ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
             ref="${!ref_name:-}"
             if [ -z "$ref" ]; then
-              ref=$( (grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
+              ref=$( (grep -hE "$module/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
                 | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
-                | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
+                | sed -E "s#$module/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
             fi
             if [ -n "$ref" ]; then
               git -C "../$repo" checkout "$ref"
@@ -303,22 +307,26 @@ jobs:
             *) prefix="$prefix/" ;;
           esac
 
-          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+\.\./\.\./[^[:space:]]+' {} + 2>/dev/null \
-            | sed -E 's/.*=>[[:space:]]+\.\.\/\.\.\/([^[:space:]\/]+).*/\1/' \
+          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+(\.\./)+[^[:space:]]+' {} + 2>/dev/null \
+            | sed -E 's#.*=>[[:space:]]+(\.\./)+([^[:space:]/]+).*#\2#' \
             | sort -u || true)
 
           while IFS= read -r repo; do
             [ -n "$repo" ] || continue
+            module=$( (grep -hE "github.com/[^/]+/$repo([/[:space:]])" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
+              | sed -nE "s#.*(github.com/[^/]+/$repo)(/[^[:space:]]*)?[[:space:]].*#\1#p" \
+              | head -n 1)
+            [ -n "$module" ] || module="github.com/heliannuuthus/$repo"
             if [ ! -d "../$repo/.git" ]; then
-              git clone "https://github.com/heliannuuthus/$repo.git" "../$repo"
+              git clone "https://$module.git" "../$repo"
             fi
 
             ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
             ref="${!ref_name:-}"
             if [ -z "$ref" ]; then
-              ref=$( (grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
+              ref=$( (grep -hE "$module/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
                 | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
-                | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
+                | sed -E "s#$module/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
             fi
             if [ -n "$ref" ]; then
               git -C "../$repo" checkout "$ref"
@@ -392,22 +400,26 @@ jobs:
             *) prefix="$prefix/" ;;
           esac
 
-          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+\.\./\.\./[^[:space:]]+' {} + 2>/dev/null \
-            | sed -E 's/.*=>[[:space:]]+\.\.\/\.\.\/([^[:space:]\/]+).*/\1/' \
+          repos=$(find "$prefix" -name "go.mod" -not -path "*/vendor/*" -exec grep -hE '=>[[:space:]]+(\.\./)+[^[:space:]]+' {} + 2>/dev/null \
+            | sed -E 's#.*=>[[:space:]]+(\.\./)+([^[:space:]/]+).*#\2#' \
             | sort -u || true)
 
           while IFS= read -r repo; do
             [ -n "$repo" ] || continue
+            module=$( (grep -hE "github.com/[^/]+/$repo([/[:space:]])" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
+              | sed -nE "s#.*(github.com/[^/]+/$repo)(/[^[:space:]]*)?[[:space:]].*#\1#p" \
+              | head -n 1)
+            [ -n "$module" ] || module="github.com/heliannuuthus/$repo"
             if [ ! -d "../$repo/.git" ]; then
-              git clone "https://github.com/heliannuuthus/$repo.git" "../$repo"
+              git clone "https://$module.git" "../$repo"
             fi
 
             ref_name="HEPHAESTUS_$(printf '%s' "$repo" | tr '[:lower:]-' '[:upper:]_')_REF"
             ref="${!ref_name:-}"
             if [ -z "$ref" ]; then
-              ref=$( (grep -hE "github.com/heliannuuthus/$repo/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
+              ref=$( (grep -hE "$module/[^[:space:]]+[[:space:]]+v[0-9]" "$prefix"*/go.mod "$prefix"go.mod 2>/dev/null || true) \
                 | awk '$2 != "v0.0.0" { print $1 " " $2; exit }' \
-                | sed -E "s#github.com/heliannuuthus/$repo/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
+                | sed -E "s#$module/([^[:space:]]+)[[:space:]]+(.+)#\1/\2#")
             fi
             if [ -n "$ref" ]; then
               git -C "../$repo" checkout "$ref"
