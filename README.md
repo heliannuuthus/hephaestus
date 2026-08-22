@@ -21,6 +21,7 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-compose-integration.yml    # submodules → scripts → Compose validation
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-containerize-source.yml    # source tree → one or more GHCR images
+├── ci-promote-gitops.yml         # stable image → private overlay update
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
@@ -150,6 +151,17 @@ Source container workflows and callers that set `release-tags: true` publish
 the exact release version plus a `sha-*` traceability tag. Existing artifact
 callers retain their legacy prerelease tagging until they opt in. New release
 callers invoke delivery only for `v*` tags.
+
+### GitOps promotion
+
+`ci-promote-gitops.yml` accepts a stable semantic version and a constrained
+list of `<component>/overlay/release*.yaml=ghcr.io/<owner>/<image>` mappings.
+It rejects paths outside component overlays and never edits component-owned
+`deploy/` contracts.
+
+Callers must make promotion depend on successful CI and image publishing, then
+forward a fine-grained `gitops_token` scoped only to the private desired-state
+repository. Normal branch builds and `sha-*` tags are not promotable.
 
 ### Node.js Backend
 
