@@ -1,0 +1,8 @@
+[
+  {
+    "image": "ghcr.io/heliannuuthus/hephaestus-frontend-fixture",
+    "context": "tests/node",
+    "dockerfile": "Dockerfile",
+    "buildArgs": "APP=fixture"
+  }
+]
