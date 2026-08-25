@@ -158,7 +158,8 @@ callers invoke delivery only for `v*` tags.
 `ci-promote-gitops.yml` accepts a stable semantic version and a constrained
 list of `<component>/overlay/release*.yaml=ghcr.io/<owner>/<image>` mappings.
 It rejects paths outside component overlays and never edits component-owned
-`deploy/` contracts.
+`deploy/` contracts. The desired-state repository defaults to
+`heliantheons/applications`.
 
 Callers must make promotion depend on successful CI and image publishing, then
 forward a fine-grained `gitops_token` scoped only to the private desired-state
