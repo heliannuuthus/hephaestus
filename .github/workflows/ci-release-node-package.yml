@@ -1,0 +1,82 @@
+name: Release Node Package Tarball
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        required: false
+        default: "./"
+        type: string
+        description: Working directory
+      node-version:
+        required: false
+        default: "lts/*"
+        type: string
+        description: Node.js version
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: heliannuuthus/hephaestus/actions/setup-node@main
+        with:
+          workdir: ${{ inputs.workdir }}
+          node-version: ${{ inputs.node-version }}
+
+      - uses: heliannuuthus/hephaestus/actions/version@main
+        id: version
+        with:
+          workdir: ${{ inputs.workdir }}
+          lang: node
+
+      - name: Require an exact release tag
+        if: steps.version.outputs.channel != 'latest'
+        run: |
+          echo "::error::Node package releases require an exact v* tag"
+          exit 1
+
+      - name: Set release version
+        shell: bash
+        working-directory: ${{ inputs.workdir }}
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Build package tarball
+        id: pack
+        shell: bash
+        working-directory: ${{ inputs.workdir }}
+        run: |
+          pack_dir="$RUNNER_TEMP/node-package-release"
+          mkdir -p "$pack_dir"
+          pnpm pack --pack-destination "$pack_dir"
+
+          mapfile -t packages < <(find "$pack_dir" -maxdepth 1 -type f -name '*.tgz' -print)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one package tarball, found ${#packages[@]}"
+            exit 1
+          fi
+
+          package_path="${packages[0]}"
+          echo "path=$package_path" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PACKAGE_PATH: ${{ steps.pack.outputs.path }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$PACKAGE_PATH" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$PACKAGE_PATH" \
+              --verify-tag \
+              --generate-notes \
+              --title "$RELEASE_TAG"
+          fi
