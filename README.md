@@ -18,6 +18,7 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-rust.yml                   # setup → lint → build
 ├── ci-node.yml                   # setup → lint → build (backend)
 ├── ci-frontend.yml               # setup → lint/type-check → build/test/pack
+├── ci-release-node-package.yml    # pnpm pack → GitHub Release asset
 ├── ci-compose-integration.yml    # submodules → scripts → Compose validation
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-containerize-source.yml    # source tree → one or more GHCR images
@@ -193,6 +194,27 @@ package, temporarily add `NPM_TOKEN` to that environment to bootstrap the first
 release. Afterward, configure npm Trusted Publishing with the caller workflow
 filename and the `publish` environment, then remove the token. When no token is
 present, npm authenticates through GitHub OIDC.
+
+### Node.js Package Tarball Release
+
+```yaml
+jobs:
+  release-package:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ci]
+    uses: heliannuuthus/hephaestus/.github/workflows/ci-release-node-package.yml@main
+    permissions:
+      contents: write
+    with:
+      workdir: "./"
+      node-version: "24.x"
+```
+
+Use this delivery path when consumers need an immutable, publicly downloadable
+package but an npm registry publisher is not available. The workflow accepts
+only an exact `v*` tag, sets the manifest version from that tag, requires
+exactly one `pnpm pack` tarball, and creates or updates the matching GitHub
+Release asset. Consumers should pin the complete release asset URL.
 
 ### Rust Tauri
 
