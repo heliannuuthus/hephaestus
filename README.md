@@ -161,9 +161,13 @@ It rejects paths outside component overlays and never edits component-owned
 `deploy/` contracts. The desired-state repository defaults to
 `heliantheons/applications`.
 
-Callers must make promotion depend on successful CI and image publishing, then
-forward a fine-grained `gitops_token` scoped only to the private desired-state
-repository. Normal branch builds and `sha-*` tags are not promotable.
+Callers must make promotion depend on successful CI and image publishing. New
+callers pass `gitops_app_id` and forward `gitops_app_private_key`; the reusable
+workflow mints a repository-scoped GitHub App installation token that expires
+after one hour, requests only `contents: write`, and is revoked by the action
+when the job finishes. The legacy `gitops_token` secret remains as a deprecated
+fallback for existing callers. Normal branch builds and `sha-*` tags are not
+promotable.
 
 ### Node.js Backend
 

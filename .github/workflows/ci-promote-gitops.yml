@@ -16,10 +16,28 @@ on:
         default: heliantheons/applications
         type: string
         description: Private GitOps repository to update
+      gitops_app_id:
+        required: false
+        default: ""
+        type: string
+        description: GitHub App ID used to mint a short-lived installation token
+      gitops_app_owner:
+        required: false
+        default: heliantheons
+        type: string
+        description: Owner of the GitHub App installation
+      gitops_app_repositories:
+        required: false
+        default: applications
+        type: string
+        description: Newline-delimited repositories granted to the installation token
     secrets:
+      gitops_app_private_key:
+        required: false
+        description: Private key for the GitHub App selected by gitops_app_id
       gitops_token:
-        required: true
-        description: Fine-grained token or GitHub App token with repository write access
+        required: false
+        description: Deprecated long-lived token fallback for repository write access
 
 concurrency:
   group: gitops-${{ inputs.repository }}
@@ -55,12 +73,23 @@ jobs:
             }
           done <<<"$UPDATES"
 
+      - name: Create GitHub App installation token
+        if: ${{ inputs.gitops_app_id != '' }}
+        id: gitops-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ inputs.gitops_app_id }}
+          private-key: ${{ secrets.gitops_app_private_key }}
+          owner: ${{ inputs.gitops_app_owner }}
+          repositories: ${{ inputs.gitops_app_repositories }}
+          permission-contents: write
+
       - name: Check out GitOps desired state
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repository }}
           ref: main
-          token: ${{ secrets.gitops_token }}
+          token: ${{ steps.gitops-app-token.outputs.token || secrets.gitops_token }}
           fetch-depth: 0
 
       - name: Update overlay release files
