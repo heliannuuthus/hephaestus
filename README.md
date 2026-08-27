@@ -156,10 +156,10 @@ callers invoke delivery only for `v*` tags.
 ### GitOps promotion
 
 `ci-promote-gitops.yml` accepts a stable semantic version and a constrained
-list of `<component>/overlay/release*.yaml=ghcr.io/<owner>/<image>` mappings.
-It rejects paths outside component overlays and never edits component-owned
-`deploy/` contracts. The desired-state repository defaults to
-`heliantheons/applications`.
+list of `apps/<application>/release*.yaml=ghcr.io/<owner>/<image>` mappings.
+It rejects paths outside private application roots. Public business
+repositories own images and source code only; the complete Kubernetes design
+lives in `heliantheons/applications`.
 
 Callers must make promotion depend on successful CI and image publishing. New
 callers pass `gitops_app_id` and forward `gitops_app_private_key`; the reusable

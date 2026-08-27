@@ -10,7 +10,7 @@ on:
       updates:
         required: true
         type: string
-        description: Newline-delimited overlay-file=image mappings
+        description: Newline-delimited private application release-file=image mappings
       repository:
         required: false
         default: heliantheons/applications
@@ -63,8 +63,8 @@ jobs:
           }
           while IFS='=' read -r file image; do
             [[ -n "$file" && -n "$image" ]] || continue
-            [[ "$file" =~ ^[a-z0-9-]+/overlay/release(-[a-z0-9-]+)?\.yaml$ ]] || {
-              echo "::error::Update target must be a component overlay release file: $file"
+            [[ "$file" =~ ^apps/[a-z0-9-]+/release(-[a-z0-9-]+)?\.yaml$ ]] || {
+              echo "::error::Update target must be a private application release file: $file"
               exit 1
             }
             [[ "$image" =~ ^ghcr\.io/[a-z0-9._-]+/[a-z0-9._-]+$ ]] || {
@@ -92,7 +92,7 @@ jobs:
           token: ${{ steps.gitops-app-token.outputs.token || secrets.gitops_token }}
           fetch-depth: 0
 
-      - name: Update overlay release files
+      - name: Update application release files
         shell: bash
         env:
           VERSION: ${{ inputs.version }}
@@ -102,7 +102,7 @@ jobs:
           while IFS='=' read -r file image; do
             [[ -n "$file" && -n "$image" ]] || continue
             [[ -f "$file" ]] || {
-              echo "::error::Overlay release file does not exist: $file"
+              echo "::error::Application release file does not exist: $file"
               exit 1
             }
             IMAGE="$image" FILE="$file" python3 - <<'PY'
