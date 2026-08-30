@@ -10,15 +10,19 @@ on:
       updates:
         required: true
         type: string
-        description: Newline-delimited private application release-file=image mappings
+        description: Newline-delimited release-file=image mappings
       repository:
         required: false
         default: heliantheons/applications
         type: string
-        description: Private GitOps repository to update
-      gitops_app_id:
+        description: GitOps repository to update
+      branch:
         required: false
-        default: ""
+        default: main
+        type: string
+        description: Branch that receives the desired-state commit
+      gitops_app_id:
+        required: true
         type: string
         description: GitHub App ID used to mint a short-lived installation token
       gitops_app_owner:
@@ -33,11 +37,15 @@ on:
         description: Newline-delimited repositories granted to the installation token
     secrets:
       gitops_app_private_key:
-        required: false
+        required: true
         description: Private key for the GitHub App selected by gitops_app_id
-      gitops_token:
-        required: false
-        description: Deprecated long-lived token fallback for repository write access
+    outputs:
+      changed:
+        description: Whether the desired state changed
+        value: ${{ jobs.promote.outputs.changed }}
+      commit-sha:
+        description: Resulting desired-state commit SHA
+        value: ${{ jobs.promote.outputs.commit-sha }}
 
 concurrency:
   group: gitops-${{ inputs.repository }}
@@ -49,32 +57,11 @@ permissions:
 jobs:
   promote:
     runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.promote.outputs.changed }}
+      commit-sha: ${{ steps.promote.outputs.commit-sha }}
     steps:
-      - name: Validate promotion request
-        shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-          UPDATES: ${{ inputs.updates }}
-        run: |
-          set -euo pipefail
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-            echo "::error::Only stable semantic versions can be promoted"
-            exit 1
-          }
-          while IFS='=' read -r file image; do
-            [[ -n "$file" && -n "$image" ]] || continue
-            [[ "$file" =~ ^apps/[a-z0-9-]+/release(-[a-z0-9-]+)?\.yaml$ ]] || {
-              echo "::error::Update target must be a private application release file: $file"
-              exit 1
-            }
-            [[ "$image" =~ ^ghcr\.io/[a-z0-9._-]+/[a-z0-9._-]+$ ]] || {
-              echo "::error::Unsupported image name: $image"
-              exit 1
-            }
-          done <<<"$UPDATES"
-
       - name: Create GitHub App installation token
-        if: ${{ inputs.gitops_app_id != '' }}
         id: gitops-app-token
         uses: actions/create-github-app-token@v3
         with:
@@ -88,52 +75,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repository }}
-          ref: main
-          token: ${{ steps.gitops-app-token.outputs.token || secrets.gitops_token }}
+          ref: ${{ inputs.branch }}
+          token: ${{ steps.gitops-app-token.outputs.token }}
           fetch-depth: 0
 
-      - name: Update application release files
-        shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-          UPDATES: ${{ inputs.updates }}
-        run: |
-          set -euo pipefail
-          while IFS='=' read -r file image; do
-            [[ -n "$file" && -n "$image" ]] || continue
-            [[ -f "$file" ]] || {
-              echo "::error::Application release file does not exist: $file"
-              exit 1
-            }
-            IMAGE="$image" FILE="$file" python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          path = Path(os.environ["FILE"])
-          image = os.environ["IMAGE"]
-          version = os.environ["VERSION"]
-          source = path.read_text()
-          pattern = re.compile(rf"^(\s+image:\s+){re.escape(image)}:[^\s]+\s*$", re.MULTILINE)
-          updated, count = pattern.subn(rf"\g<1>{image}:{version}", source)
-          if count != 1:
-              raise SystemExit(f"expected exactly one {image} image in {path}, found {count}")
-          path.write_text(updated)
-          PY
-          done <<<"$UPDATES"
-
-      - name: Commit desired state
-        shell: bash
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo "Desired state already references $VERSION"
-            exit 0
-          fi
-          git config user.name "heliantheons-release[bot]"
-          git config user.email "heliantheons-release[bot]@users.noreply.github.com"
-          git add --update
-          git commit -m "chore(release): promote applications to $VERSION"
-          git push origin HEAD:main
+      - id: promote
+        name: Promote desired state
+        uses: heliannuuthus/hephaestus/actions/promote-gitops@main
+        with:
+          version: ${{ inputs.version }}
+          updates: ${{ inputs.updates }}
+          branch: ${{ inputs.branch }}

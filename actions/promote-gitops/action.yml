@@ -1,0 +1,34 @@
+name: Promote GitOps
+description: Update image versions in a checked-out GitOps repository and push the desired state
+
+inputs:
+  version:
+    description: Stable semantic version without a v prefix
+    required: true
+  updates:
+    description: Newline-delimited release-file=image mappings
+    required: true
+  branch:
+    description: Branch that receives the desired-state commit
+    required: false
+    default: main
+
+outputs:
+  changed:
+    description: Whether the desired state changed
+    value: ${{ steps.promote.outputs.changed }}
+  commit-sha:
+    description: Resulting desired-state commit SHA
+    value: ${{ steps.promote.outputs.commit-sha }}
+
+runs:
+  using: composite
+  steps:
+    - id: promote
+      name: Update and push desired state
+      shell: bash
+      env:
+        PROMOTION_BRANCH: ${{ inputs.branch }}
+        PROMOTION_UPDATES: ${{ inputs.updates }}
+        PROMOTION_VERSION: ${{ inputs.version }}
+      run: python3 "$GITHUB_ACTION_PATH/promote.py"
