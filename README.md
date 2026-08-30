@@ -11,7 +11,8 @@ actions/                          # Composite Actions (reusable steps)
 ├── setup-node/action.yml         # Node + pnpm + cache (backend)
 ├── setup-pnpm/action.yml         # Node + pnpm + cache + eslint/prettier (frontend)
 ├── version/action.yml            # Unified version/project name extraction
-└── containerize/action.yml       # Docker build + push to GHCR
+├── containerize/action.yml       # Docker build + push to GHCR
+└── promote-gitops/action.yml     # Desired-state update + commit + push
 
 .github/workflows/                # Reusable Workflows (job orchestration)
 ├── ci-golang.yml                 # setup → lint → security → build
@@ -155,19 +156,20 @@ callers invoke delivery only for `v*` tags.
 
 ### GitOps promotion
 
-`ci-promote-gitops.yml` accepts a stable semantic version and a constrained
-list of `apps/<application>/release*.yaml=ghcr.io/<owner>/<image>` mappings.
-It rejects paths outside private application roots. Public business
-repositories own images and source code only; the complete Kubernetes design
-lives in `heliantheons/applications`.
+`ci-promote-gitops.yml` authenticates to and checks out the desired-state
+repository, then delegates the update to `actions/promote-gitops`. The action
+accepts a stable semantic version and newline-delimited
+`path/to/release*.yaml=ghcr.io/<owner>/<image>` mappings. It validates generic
+relative-path safety without knowing the private repository's directory
+topology. Public business repositories own images and source code only; the
+complete Kubernetes design lives in `heliantheons/applications`.
 
-Callers must make promotion depend on successful CI and image publishing. New
-callers pass `gitops_app_id` and forward `gitops_app_private_key`; the reusable
+Callers must make promotion depend on successful CI and image publishing. They
+pass `gitops_app_id` and forward `gitops_app_private_key`; the reusable
 workflow mints a repository-scoped GitHub App installation token that expires
 after one hour, requests only `contents: write`, and is revoked by the action
-when the job finishes. The legacy `gitops_token` secret remains as a deprecated
-fallback for existing callers. Normal branch builds and `sha-*` tags are not
-promotable.
+when the job finishes. Long-lived token fallback is not supported. Normal
+branch builds and `sha-*` tags are not promotable.
 
 ### Node.js Backend
 
