@@ -23,7 +23,8 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-compose-integration.yml    # submodules → scripts → Compose validation
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-containerize-source.yml    # source tree → one or more GHCR images
-├── ci-promote-gitops.yml         # stable image → private overlay update
+├── ci-auto-promote-gitops.yml    # centrally discover and promote stable images
+├── ci-promote-gitops.yml         # legacy caller-driven promotion
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
@@ -156,20 +157,19 @@ callers invoke delivery only for `v*` tags.
 
 ### GitOps promotion
 
-`ci-promote-gitops.yml` authenticates to and checks out the desired-state
-repository, then delegates the update to `actions/promote-gitops`. The action
-accepts a stable semantic version and newline-delimited
-`path/to/release*.yaml=ghcr.io/<owner>/<image>` mappings. It validates generic
-relative-path safety without knowing the private repository's directory
-topology. Public business repositories own images and source code only; the
-complete Kubernetes design lives in `heliantheons/applications`.
+`ci-auto-promote-gitops.yml` is called only by the private
+`heliantheons/applications` repository. Its scheduled caller owns the mapping
+from source repositories to `apps/<application>/release*.yaml` files and GHCR
+images. It scans stable `v*` tags, requires a successful source workflow run
+for the tag commit and every mapped image manifest, then runs the GitOps
+repository's `validate.sh` before committing desired state with that
+repository's own `GITHUB_TOKEN`. It never downgrades a release. Business
+repositories contain only CI and image publication; they need no GitOps App
+ID, private key, or deployment mapping. Manual dispatch runs the same scan.
 
-Callers must make promotion depend on successful CI and image publishing. They
-pass `gitops_app_id` and forward `gitops_app_private_key`; the reusable
-workflow mints a repository-scoped GitHub App installation token that expires
-after one hour, requests only `contents: write`, and is revoked by the action
-when the job finishes. Long-lived token fallback is not supported. Normal
-branch builds and `sha-*` tags are not promotable.
+`ci-promote-gitops.yml` and `actions/promote-gitops` remain only for existing
+caller compatibility during migration. Do not add them to new business
+workflows.
 
 ### Node.js Backend
 
