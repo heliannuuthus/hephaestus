@@ -11,8 +11,7 @@ actions/                          # Composite Actions (reusable steps)
 ├── setup-node/action.yml         # Node + pnpm + cache (backend)
 ├── setup-pnpm/action.yml         # Node + pnpm + cache + eslint/prettier (frontend)
 ├── version/action.yml            # Unified version/project name extraction
-├── containerize/action.yml       # Docker build + push to GHCR
-└── promote-gitops/action.yml     # Desired-state update + commit + push
+└── containerize/action.yml       # Docker build + push to GHCR
 
 .github/workflows/                # Reusable Workflows (job orchestration)
 ├── ci-golang.yml                 # setup → lint → security → build
@@ -23,7 +22,6 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-compose-integration.yml    # submodules → scripts → Compose validation
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-containerize-source.yml    # source tree → one or more GHCR images
-├── ci-promote-gitops.yml         # stable image → private overlay update
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
@@ -153,23 +151,6 @@ Source container workflows and callers that set `release-tags: true` publish
 the exact release version plus a `sha-*` traceability tag. Existing artifact
 callers retain their legacy prerelease tagging until they opt in. New release
 callers invoke delivery only for `v*` tags.
-
-### GitOps promotion
-
-`ci-promote-gitops.yml` authenticates to and checks out the desired-state
-repository, then delegates the update to `actions/promote-gitops`. The action
-accepts a stable semantic version and newline-delimited
-`path/to/release*.yaml=ghcr.io/<owner>/<image>` mappings. It validates generic
-relative-path safety without knowing the private repository's directory
-topology. Public business repositories own images and source code only; the
-complete Kubernetes design lives in `heliantheons/applications`.
-
-Callers must make promotion depend on successful CI and image publishing. They
-pass `gitops_app_id` and forward `gitops_app_private_key`; the reusable
-workflow mints a repository-scoped GitHub App installation token that expires
-after one hour, requests only `contents: write`, and is revoked by the action
-when the job finishes. Long-lived token fallback is not supported. Normal
-branch builds and `sha-*` tags are not promotable.
 
 ### Node.js Backend
 
