@@ -2,6 +2,10 @@
 
 Reusable GitHub Actions workflows and composite actions for **Golang**, **Rust**, **Node.js**, and **Tauri** projects.
 
+Consumer-owned promotion uses `ci-auto-promote-gitops.yml` with a `config`
+input pointing to release mappings in the calling repository. The consumer
+owns its schedule, deployment destination, and write permissions.
+
 ## Architecture
 
 ```
@@ -165,8 +169,8 @@ repository's own `GITHUB_TOKEN`. It never downgrades a release. Business
 repositories contain only CI and image publication. Manual dispatch in the
 private caller runs the same scan.
 
-The platform's `promote-gitops` self-validation workflow runs the four release
-scanner tests with:
+The platform's `consumer-promotion` self-validation workflow runs the four
+release scanner tests with:
 
 ```bash
 python3 -m unittest discover -s scripts -p 'test_auto_promote_gitops.py' -v

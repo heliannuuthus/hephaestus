@@ -1,10 +1,9 @@
-name: promote-gitops
+name: consumer-promotion
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
