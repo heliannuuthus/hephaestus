@@ -1,16 +1,20 @@
 name: rust-tauri
 
 on:
+  push:
+    branches: [main]
   pull_request:
-    types: [opened, reopened, synchronize]
-  pull_request_target:
-    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   project:
     uses: ./.github/workflows/ci-rust-tauri.yml
     permissions:
-      contents: write
-      packages: write
+      contents: read
     with:
       workdir: "tests/node/"
+      release: false

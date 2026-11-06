@@ -2,6 +2,10 @@
 
 Reusable GitHub Actions workflows and composite actions for **Golang**, **Rust**, **Node.js**, and **Tauri** projects.
 
+Consumer-owned promotion uses `ci-auto-promote-gitops.yml` with a `config`
+input pointing to release mappings in the calling repository. The consumer
+owns its schedule, deployment destination, and write permissions.
+
 ## Architecture
 
 ```

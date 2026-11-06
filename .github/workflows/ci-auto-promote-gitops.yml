@@ -1,0 +1,51 @@
+name: Auto Promote GitOps
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        required: false
+        default: .hephaestus/promotions.json
+        type: string
+        description: Promotion mappings in the calling GitOps repository
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: heliannuuthus/hephaestus
+          ref: main
+          path: .hephaestus-runtime
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: latest
+      - name: Select published stable releases
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CONFIG: ${{ inputs.config }}
+        run: python3 .hephaestus-runtime/scripts/auto_promote_gitops.py "$CONFIG"
+      - name: Validate desired state
+        run: ./validate.sh
+      - name: Commit desired state
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No release changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- apps/*/release*.yaml
+          git commit -m "chore(release): promote published images"
+          git push origin HEAD:main
