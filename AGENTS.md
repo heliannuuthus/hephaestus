@@ -18,12 +18,12 @@ Hephaestus 提供可复用 GitHub Actions workflows 与 composite actions，覆�
 - `.github/workflows/ci-frontend.yml`
 - `.github/workflows/ci-deploy-pages.yml`
 - `.github/workflows/ci-containerize.yml`
+- `.github/workflows/ci-auto-promote-gitops.yml`
 - `actions/setup-go/action.yml`
 - `actions/setup-node/action.yml`
 - `actions/setup-pnpm/action.yml`
 - `actions/setup-rust/action.yml`
 - `actions/version/action.yml`
-- `actions/promote-gitops/action.yml`
 
 ## 开发规则
 

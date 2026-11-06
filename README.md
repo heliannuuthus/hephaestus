@@ -11,8 +11,7 @@ actions/                          # Composite Actions (reusable steps)
 ├── setup-node/action.yml         # Node + pnpm + cache (backend)
 ├── setup-pnpm/action.yml         # Node + pnpm + cache + eslint/prettier (frontend)
 ├── version/action.yml            # Unified version/project name extraction
-├── containerize/action.yml       # Docker build + push to GHCR
-└── promote-gitops/action.yml     # Desired-state update + commit + push
+└── containerize/action.yml       # Docker build + push to GHCR
 
 .github/workflows/                # Reusable Workflows (job orchestration)
 ├── ci-golang.yml                 # setup → lint → security → build
@@ -24,7 +23,6 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-containerize-source.yml    # source tree → one or more GHCR images
 ├── ci-auto-promote-gitops.yml    # centrally discover and promote stable images
-├── ci-promote-gitops.yml         # legacy caller-driven promotion
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
@@ -157,19 +155,22 @@ callers invoke delivery only for `v*` tags.
 
 ### GitOps promotion
 
-`ci-auto-promote-gitops.yml` is called only by the private
-`heliantheons/applications` repository. Its scheduled caller owns the mapping
-from source repositories to `apps/<application>/release*.yaml` files and GHCR
-images. It scans stable `v*` tags, requires a successful source workflow run
-for the tag commit and every mapped image manifest, then runs the GitOps
-repository's `validate.sh` before committing desired state with that
+`ci-auto-promote-gitops.yml` provides consumer-owned promotion for a private
+deployment repository. Its scheduled caller owns the destination identity and
+the mapping from source repositories to `apps/<application>/release*.yaml`
+files and GHCR images. It scans stable `v*` tags, requires a successful source
+workflow run for the tag commit and every mapped image manifest, then runs
+the caller's `validate.sh` before committing desired state with that
 repository's own `GITHUB_TOKEN`. It never downgrades a release. Business
-repositories contain only CI and image publication; they need no GitOps App
-ID, private key, or deployment mapping. Manual dispatch runs the same scan.
+repositories contain only CI and image publication. Manual dispatch in the
+private caller runs the same scan.
 
-`ci-promote-gitops.yml` and `actions/promote-gitops` remain only for existing
-caller compatibility during migration. Do not add them to new business
-workflows.
+The platform's `promote-gitops` self-validation workflow runs the four release
+scanner tests with:
+
+```bash
+python3 -m unittest discover -s scripts -p 'test_auto_promote_gitops.py' -v
+```
 
 ### Node.js Backend
 

@@ -14,5 +14,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Test promote-gitops action
-        run: python3 -m unittest discover -s tests/promote-gitops -v
+      - name: Test consumer-owned release scanner
+        run: python3 -m unittest discover -s scripts -p 'test_auto_promote_gitops.py' -v
