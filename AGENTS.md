@@ -1,6 +1,6 @@
 # Hephaestus
 
-Hephaestus 提供可复用 GitHub Actions workflows 与 composite actions，覆盖 Go、Rust、Node.js、pnpm 前端、Tauri、容器构建、GitOps promotion 与 GitHub Pages 部署。
+Hephaestus 提供可复用 GitHub Actions workflows 与 composite actions，覆盖 Go、Rust、Node.js、pnpm 前端、Tauri、容器构建与 GitHub Pages 部署。
 
 ## 目录结构
 
@@ -18,7 +18,6 @@ Hephaestus 提供可复用 GitHub Actions workflows 与 composite actions，覆�
 - `.github/workflows/ci-frontend.yml`
 - `.github/workflows/ci-deploy-pages.yml`
 - `.github/workflows/ci-containerize.yml`
-- `.github/workflows/ci-auto-promote-gitops.yml`
 - `actions/setup-go/action.yml`
 - `actions/setup-node/action.yml`
 - `actions/setup-pnpm/action.yml`

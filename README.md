@@ -2,10 +2,6 @@
 
 Reusable GitHub Actions workflows and composite actions for **Golang**, **Rust**, **Node.js**, and **Tauri** projects.
 
-Consumer-owned promotion uses `ci-auto-promote-gitops.yml` with a `config`
-input pointing to release mappings in the calling repository. The consumer
-owns its schedule, deployment destination, and write permissions.
-
 ## Architecture
 
 ```
@@ -26,7 +22,6 @@ actions/                          # Composite Actions (reusable steps)
 ├── ci-compose-integration.yml    # submodules → scripts → Compose validation
 ├── ci-deploy-pages.yml           # pnpm build → GitHub Pages deploy
 ├── ci-containerize-source.yml    # source tree → one or more GHCR images
-├── ci-auto-promote-gitops.yml    # centrally discover and promote stable images
 ├── ci-rust-tauri.yml             # multi-platform Tauri build
 └── ci-containerize.yml           # Docker containerization
 ```
@@ -156,25 +151,6 @@ Source container workflows and callers that set `release-tags: true` publish
 the exact release version plus a `sha-*` traceability tag. Existing artifact
 callers retain their legacy prerelease tagging until they opt in. New release
 callers invoke delivery only for `v*` tags.
-
-### GitOps promotion
-
-`ci-auto-promote-gitops.yml` provides consumer-owned promotion for a private
-deployment repository. Its scheduled caller owns the destination identity and
-the mapping from source repositories to `apps/<application>/release*.yaml`
-files and GHCR images. It scans stable `v*` tags, requires a successful source
-workflow run for the tag commit and every mapped image manifest, then runs
-the caller's `validate.sh` before committing desired state with that
-repository's own `GITHUB_TOKEN`. It never downgrades a release. Business
-repositories contain only CI and image publication. Manual dispatch in the
-private caller runs the same scan.
-
-The platform's `consumer-promotion` self-validation workflow runs the four
-release scanner tests with:
-
-```bash
-python3 -m unittest discover -s scripts -p 'test_auto_promote_gitops.py' -v
-```
 
 ### Node.js Backend
 
