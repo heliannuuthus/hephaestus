@@ -13,6 +13,11 @@ on:
         default: "lts/*"
         type: string
         description: Node.js version
+      package-manager:
+        required: false
+        default: "auto"
+        type: string
+        description: "Package manager: auto, pnpm, npm, or yarn"
 
 permissions:
   contents: write
@@ -25,10 +30,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: heliannuuthus/hephaestus/actions/setup-node@main
+      - id: setup
+        uses: heliannuuthus/hephaestus/actions/setup-node@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
+          package-manager: ${{ inputs.package-manager }}
 
       - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
@@ -49,21 +56,11 @@ jobs:
 
       - name: Build package tarball
         id: pack
-        shell: bash
-        working-directory: ${{ inputs.workdir }}
-        run: |
-          pack_dir="$RUNNER_TEMP/node-package-release"
-          mkdir -p "$pack_dir"
-          pnpm pack --pack-destination "$pack_dir"
-
-          mapfile -t packages < <(find "$pack_dir" -maxdepth 1 -type f -name '*.tgz' -print)
-          if [ "${#packages[@]}" -ne 1 ]; then
-            echo "::error::Expected exactly one package tarball, found ${#packages[@]}"
-            exit 1
-          fi
-
-          package_path="${packages[0]}"
-          echo "path=$package_path" >> "$GITHUB_OUTPUT"
+        uses: heliannuuthus/hephaestus/actions/pack-node@main
+        with:
+          workdir: ${{ inputs.workdir }}
+          package-manager: ${{ steps.setup.outputs.package-manager }}
+          destination: ${{ runner.temp }}/node-package-release
 
       - name: Publish GitHub Release asset
         shell: bash

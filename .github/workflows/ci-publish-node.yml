@@ -13,6 +13,16 @@ on:
         default: "lts/*"
         type: string
         description: Node.js version
+      package-manager:
+        required: false
+        default: "auto"
+        type: string
+        description: "Package manager: auto, pnpm, npm, or yarn"
+      build:
+        required: false
+        default: ""
+        type: string
+        description: Build script name to run before publishing; set to empty to skip
       registry-url:
         required: false
         default: "https://registry.npmjs.org"
@@ -32,10 +42,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: heliannuuthus/hephaestus/actions/setup-node@main
+      - id: setup
+        uses: heliannuuthus/hephaestus/actions/setup-node@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
+          package-manager: ${{ inputs.package-manager }}
           registry-url: ${{ inputs.registry-url }}
 
       - name: Upgrade npm
@@ -52,6 +64,11 @@ jobs:
         working-directory: ${{ inputs.workdir }}
         run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
 
+      - name: Build
+        if: inputs.build != ''
+        working-directory: ${{ inputs.workdir }}
+        run: ${{ steps.setup.outputs.run-cmd }} "${{ inputs.build }}"
+
       - name: Publish
         working-directory: ${{ inputs.workdir }}
         env:
@@ -61,4 +78,8 @@ jobs:
             unset NODE_AUTH_TOKEN
           fi
 
-          pnpm publish --no-git-checks --access public --provenance --tag ${{ steps.version.outputs.channel }}
+          if [ "${{ steps.setup.outputs.package-manager }}" = "pnpm" ]; then
+            pnpm publish --no-git-checks --access public --provenance --tag "${{ steps.version.outputs.channel }}"
+          else
+            npm publish --access public --provenance --tag "${{ steps.version.outputs.channel }}"
+          fi

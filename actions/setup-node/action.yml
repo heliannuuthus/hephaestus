@@ -1,5 +1,5 @@
 name: Setup Node
-description: Setup Node.js with pnpm and dependency cache (backend projects)
+description: Setup Node.js with pnpm, npm, or yarn and dependency cache
 
 inputs:
   workdir:
@@ -10,29 +10,89 @@ inputs:
     description: Node.js version
     required: false
     default: "lts/*"
+  package-manager:
+    description: "Package manager: auto, pnpm, npm, or yarn"
+    required: false
+    default: "auto"
   registry-url:
     description: npm registry URL (set to enable auth via NODE_AUTH_TOKEN)
     required: false
     default: ""
 
+outputs:
+  package-manager:
+    description: Resolved package manager (pnpm, npm, or yarn)
+    value: ${{ steps.resolve.outputs.package-manager }}
+  run-cmd:
+    description: Script runner command prefix (pnpm run, npm run, or yarn run)
+    value: ${{ steps.resolve.outputs.run-cmd }}
+
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v4
+    - name: Resolve package manager
+      id: resolve
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      env:
+        INPUT_PM: ${{ inputs.package-manager }}
+      run: |
+        set -euo pipefail
+        pm="$INPUT_PM"
+        if [ "$pm" = "auto" ]; then
+          declared=""
+          if [ -f package.json ]; then
+            declared=$(node -p "const p = require('./package.json').packageManager; typeof p === 'string' ? p.split('@')[0] : ''" 2>/dev/null || echo "")
+          fi
+          case "$declared" in
+            pnpm|npm|yarn) pm="$declared" ;;
+            *)
+              if [ -f pnpm-lock.yaml ]; then
+                pm="pnpm"
+              elif [ -f package-lock.json ]; then
+                pm="npm"
+              elif [ -f yarn.lock ]; then
+                pm="yarn"
+              else
+                echo "::error::Could not detect package manager in ${{ inputs.workdir }} (expected pnpm, npm, or yarn)"
+                exit 1
+              fi
+              ;;
+          esac
+        fi
+
+        case "$pm" in
+          pnpm) run_cmd="pnpm run" ;;
+          npm) run_cmd="npm run" ;;
+          yarn) run_cmd="yarn run" ;;
+          *)
+            echo "::error::Unsupported package-manager: $pm (expected auto, pnpm, npm, or yarn)"
+            exit 1
+            ;;
+        esac
+
+        echo "package-manager=$pm" >> "$GITHUB_OUTPUT"
+        echo "run-cmd=$run_cmd" >> "$GITHUB_OUTPUT"
+
+    - if: steps.resolve.outputs.package-manager == 'pnpm'
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url || '' }}
 
-    - uses: pnpm/action-setup@v4
+    - if: steps.resolve.outputs.package-manager == 'pnpm'
+      uses: pnpm/action-setup@v4
       with:
         package_json_file: ${{ inputs.workdir }}package.json
 
-    - name: Get pnpm store path
+    - if: steps.resolve.outputs.package-manager == 'pnpm'
+      name: Get pnpm store path
       id: pnpm-store
       shell: bash
       run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
 
-    - name: Restore pnpm store cache
+    - if: steps.resolve.outputs.package-manager == 'pnpm'
+      name: Restore pnpm store cache
       uses: actions/cache/restore@v4
       id: cache-restore
       with:
@@ -40,14 +100,51 @@ runs:
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: ${{ runner.os }}-pnpm-store-
 
-    - name: Install dependencies
+    - if: steps.resolve.outputs.package-manager == 'pnpm'
+      name: Install dependencies (pnpm)
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: pnpm i --frozen-lockfile
 
-    - name: Save pnpm store cache
-      if: steps.cache-restore.outputs.cache-hit != 'true'
+    - if: steps.resolve.outputs.package-manager == 'pnpm' && steps.cache-restore.outputs.cache-hit != 'true'
+      name: Save pnpm store cache
       uses: actions/cache/save@v4
       with:
         path: ${{ steps.pnpm-store.outputs.path }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+    - if: steps.resolve.outputs.package-manager == 'npm'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url || '' }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.workdir }}package-lock.json
+
+    - if: steps.resolve.outputs.package-manager == 'npm'
+      name: Install dependencies (npm)
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      run: npm ci
+
+    - if: steps.resolve.outputs.package-manager == 'yarn'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url || '' }}
+        cache: yarn
+        cache-dependency-path: ${{ inputs.workdir }}yarn.lock
+
+    - if: steps.resolve.outputs.package-manager == 'yarn'
+      name: Install dependencies (yarn)
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      run: |
+        set -euo pipefail
+        corepack enable
+        yarn_major=$(yarn --version | cut -d. -f1)
+        if [ "$yarn_major" = "1" ]; then
+          yarn install --frozen-lockfile
+        else
+          yarn install --immutable
+        fi
