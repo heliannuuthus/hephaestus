@@ -56,7 +56,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -68,7 +68,7 @@ jobs:
           package-manager: ${{ inputs.package-manager }}
           registry-url: ${{ inputs.registry-url }}
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
       - name: Build
         if: inputs.build != ''
@@ -102,7 +102,7 @@ jobs:
 
           echo "path=$resolved" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ steps.artifact.outputs.path }}
 
@@ -115,5 +115,5 @@ jobs:
     outputs:
       page-url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v5
         id: deployment

@@ -13,7 +13,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Detect Go version
@@ -23,7 +23,7 @@ jobs:
         run: |
           mod=$(find . -name "go.mod" -not -path "./vendor/*" | head -n 1)
           echo "go-mod-path=${{ inputs.workdir }}${mod#./}" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ steps.gomod.outputs.go-mod-path }}
       - name: Lint all modules
@@ -42,7 +42,7 @@ jobs:
     needs: [lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Detect Go version
@@ -52,7 +52,7 @@ jobs:
         run: |
           mod=$(find . -name "go.mod" -not -path "./vendor/*" | head -n 1)
           echo "go-mod-path=${{ inputs.workdir }}${mod#./}" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ steps.gomod.outputs.go-mod-path }}
       - name: Install gotestsum
@@ -80,7 +80,7 @@ jobs:
           done
           echo 'mode: count' > build/coverage.out
           find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: ${{ inputs.workdir }}build/

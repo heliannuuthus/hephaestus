@@ -75,13 +75,13 @@ runs:
         echo "run-cmd=$run_cmd" >> "$GITHUB_OUTPUT"
 
     - if: steps.resolve.outputs.package-manager == 'pnpm'
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url || '' }}
 
     - if: steps.resolve.outputs.package-manager == 'pnpm'
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@v6
       with:
         package_json_file: ${{ inputs.workdir }}package.json
 
@@ -93,7 +93,7 @@ runs:
 
     - if: steps.resolve.outputs.package-manager == 'pnpm'
       name: Restore pnpm store cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       id: cache-restore
       with:
         path: ${{ steps.pnpm-store.outputs.path }}
@@ -108,13 +108,13 @@ runs:
 
     - if: steps.resolve.outputs.package-manager == 'pnpm' && steps.cache-restore.outputs.cache-hit != 'true'
       name: Save pnpm store cache
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ${{ steps.pnpm-store.outputs.path }}
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
 
     - if: steps.resolve.outputs.package-manager == 'npm'
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url || '' }}
@@ -128,7 +128,7 @@ runs:
       run: npm ci
 
     - if: steps.resolve.outputs.package-manager == 'yarn'
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url || '' }}

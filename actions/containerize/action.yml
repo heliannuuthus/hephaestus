@@ -51,7 +51,7 @@ runs:
   steps:
     - name: Download build artifacts
       if: inputs.targets != ''
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ inputs.targets }}
@@ -98,7 +98,7 @@ runs:
 
     - id: meta
       name: Docker metadata
-      uses: docker/metadata-action@v5
+      uses: docker/metadata-action@v6
       with:
         images: ${{ steps.config.outputs.image }}
         tags: |
@@ -108,7 +108,7 @@ runs:
           type=semver,enable=${{ inputs.release-tags != 'true' && github.ref != format('refs/heads/{0}', 'main') }},pattern=${{ inputs.version }}-${{ steps.legacy.outputs.timestamp }}alpha-${{ steps.legacy.outputs.short_sha }},value=${{ inputs.version || 'v0.0.1' }}
 
     - name: Login to GHCR
-      uses: docker/login-action@v3
+      uses: docker/login-action@v4
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -116,7 +116,7 @@ runs:
 
     - id: build
       name: Build and push
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v7
       with:
         context: ${{ steps.config.outputs.context }}
         file: ${{ steps.config.outputs.context }}/${{ inputs.dockerfile }}

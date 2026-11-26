@@ -47,7 +47,7 @@ runs:
         shared-key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Restore cargo tools cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       id: cargo-tools-cache
       with:
         path: ~/.cargo/bin
@@ -66,7 +66,7 @@ runs:
 
     - name: Save cargo tools cache
       if: steps.cargo-tools-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       with:
         path: ~/.cargo/bin
         key: ${{ runner.os }}-cargo-tools-${{ inputs.toolchain }}

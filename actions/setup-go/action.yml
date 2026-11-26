@@ -18,7 +18,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v7
       with:
         go-version-file: ${{ inputs.workdir }}go.mod
         cache: true
