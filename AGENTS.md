@@ -20,7 +20,7 @@ Hephaestus 提供可复用 GitHub Actions workflows 与 composite actions，覆�
 - `.github/workflows/ci-containerize.yml`
 - `actions/setup-go/action.yml`
 - `actions/setup-node/action.yml`
-- `actions/setup-pnpm/action.yml`
+- `actions/pack-node/action.yml`
 - `actions/setup-rust/action.yml`
 - `actions/version/action.yml`
 

@@ -9,7 +9,6 @@ actions/                          # Composite Actions (reusable steps)
 ├── setup-go/action.yml           # Go + cache + golangci-lint/gosec
 ├── setup-rust/action.yml         # Rust toolchain + cache + cargo tools
 ├── setup-node/action.yml         # Node + pnpm/npm/yarn (auto-detected) + cache
-├── setup-pnpm/action.yml         # Compatibility wrapper around setup-node (pnpm)
 ├── pack-node/action.yml          # Unified tarball pack for pnpm/npm/yarn
 ├── version/action.yml            # Unified version/project name extraction
 └── containerize/action.yml       # Docker build + push to GHCR
