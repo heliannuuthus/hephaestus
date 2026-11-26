@@ -8,8 +8,9 @@ Reusable GitHub Actions workflows and composite actions for **Golang**, **Rust**
 actions/                          # Composite Actions (reusable steps)
 ├── setup-go/action.yml           # Go + cache + golangci-lint/gosec
 ├── setup-rust/action.yml         # Rust toolchain + cache + cargo tools
-├── setup-node/action.yml         # Node + pnpm + cache (backend)
-├── setup-pnpm/action.yml         # Node + pnpm + cache + eslint/prettier (frontend)
+├── setup-node/action.yml         # Node + pnpm/npm/yarn (auto-detected) + cache
+├── setup-pnpm/action.yml         # Compatibility wrapper around setup-node (pnpm)
+├── pack-node/action.yml          # Unified tarball pack for pnpm/npm/yarn
 ├── version/action.yml            # Unified version/project name extraction
 └── containerize/action.yml       # Docker build + push to GHCR
 
@@ -160,6 +161,7 @@ jobs:
     uses: heliannuuthus/hephaestus/.github/workflows/ci-node.yml@main
     with:
       workdir: "./"
+      package-manager: auto # auto (default), pnpm, npm, or yarn
       format-check: format:check
       type-check: type-check
       test: test
@@ -175,6 +177,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    with:
+      workdir: "./"
+      package-manager: auto # auto (default), pnpm, npm, or yarn
+      build: build # optional pre-publish build script
 ```
 
 The publish job uses the caller repository's `publish` environment. For a new

@@ -13,6 +13,11 @@ on:
         default: "lts/*"
         type: string
         description: Node.js version
+      package-manager:
+        required: false
+        default: "auto"
+        type: string
+        description: "Package manager: auto, pnpm, npm, or yarn"
       build:
         required: false
         default: build
@@ -55,10 +60,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: heliannuuthus/hephaestus/actions/setup-pnpm@main
+      - id: setup
+        uses: heliannuuthus/hephaestus/actions/setup-node@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
+          package-manager: ${{ inputs.package-manager }}
           registry-url: ${{ inputs.registry-url }}
 
       - uses: actions/configure-pages@v5
@@ -66,8 +73,7 @@ jobs:
       - name: Build
         if: inputs.build != ''
         working-directory: ${{ inputs.workdir }}
-        run: pnpm ${{ inputs.build }}
-
+        run: ${{ steps.setup.outputs.run-cmd }} "${{ inputs.build }}"
       - name: Resolve artifact path
         id: artifact
         shell: bash

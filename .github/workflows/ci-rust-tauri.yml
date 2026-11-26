@@ -13,6 +13,11 @@ on:
         default: "lts/*"
         type: string
         description: Node.js version
+      package-manager:
+        required: false
+        default: "auto"
+        type: string
+        description: "Package manager: auto, pnpm, npm, or yarn"
       toolchain:
         required: false
         default: stable
@@ -66,10 +71,12 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libxdo-dev
 
-      - uses: heliannuuthus/hephaestus/actions/setup-pnpm@main
+      - id: setup
+        uses: heliannuuthus/hephaestus/actions/setup-node@main
         with:
           workdir: ${{ inputs.workdir }}
           node-version: ${{ inputs.node-version }}
+          package-manager: ${{ inputs.package-manager }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -83,9 +90,15 @@ jobs:
           workspaces: "${{ inputs.workdir }}src-tauri"
           cache-targets: false
 
-      - name: Install frontend dependencies
-        working-directory: ${{ inputs.workdir }}
-        run: pnpm install
+      - name: Resolve Tauri CLI command
+        id: tauri
+        shell: bash
+        run: |
+          case "${{ steps.setup.outputs.package-manager }}" in
+            pnpm) echo "script=pnpm tauri" >> "$GITHUB_OUTPUT" ;;
+            npm) echo "script=npx tauri" >> "$GITHUB_OUTPUT" ;;
+            yarn) echo "script=yarn tauri" >> "$GITHUB_OUTPUT" ;;
+          esac
 
       - uses: heliannuuthus/hephaestus/actions/version@main
         id: version
@@ -98,7 +111,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tauriScript: pnpm tauri
+          tauriScript: ${{ steps.tauri.outputs.script }}
           projectPath: ${{ inputs.workdir }}
           tagName: ${{ inputs.release && format('{0}-v__VERSION__', steps.version.outputs.project) || '' }}
           releaseName: ${{ inputs.release && format('{0} v__VERSION__', steps.version.outputs.project) || '' }}

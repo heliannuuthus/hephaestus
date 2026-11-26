@@ -1,0 +1,61 @@
+name: Pack Node Package
+description: Create a single package tarball using pnpm, npm, or yarn
+
+inputs:
+  workdir:
+    description: Working directory
+    required: false
+    default: "./"
+  package-manager:
+    description: "Resolved package manager: pnpm, npm, or yarn"
+    required: true
+  destination:
+    description: Output directory for the generated tarball
+    required: true
+
+outputs:
+  path:
+    description: Path to the generated package tarball
+    value: ${{ steps.pack.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Pack package tarball
+      id: pack
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      env:
+        PACK_PM: ${{ inputs.package-manager }}
+        PACK_DIR: ${{ inputs.destination }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$PACK_DIR"
+        case "$PACK_PM" in
+          pnpm)
+            pnpm pack --pack-destination "$PACK_DIR"
+            ;;
+          npm)
+            npm pack --pack-destination "$PACK_DIR"
+            ;;
+          yarn)
+            yarn_major=$(yarn --version | cut -d. -f1)
+            if [ "$yarn_major" = "1" ]; then
+              yarn pack --filename "$PACK_DIR/package.tgz"
+            else
+              yarn pack -o "$PACK_DIR/package.tgz"
+            fi
+            ;;
+          *)
+            echo "::error::Unsupported package-manager for pack: $PACK_PM"
+            exit 1
+            ;;
+        esac
+
+        mapfile -t packages < <(find "$PACK_DIR" -maxdepth 1 -type f -name '*.tgz' -print)
+        if [ "${#packages[@]}" -ne 1 ]; then
+          echo "::error::Expected exactly one package tarball, found ${#packages[@]}"
+          exit 1
+        fi
+
+        echo "path=${packages[0]}" >> "$GITHUB_OUTPUT"
