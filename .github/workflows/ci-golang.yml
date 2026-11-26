@@ -32,7 +32,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
@@ -43,13 +43,13 @@ jobs:
     needs: [setup]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
         with:
           workdir: ${{ inputs.workdir }}
-      - uses: golangci/golangci-lint-action@v7
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           working-directory: ${{ inputs.workdir }}
@@ -61,7 +61,7 @@ jobs:
       project: ${{ steps.version.outputs.project }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: heliannuuthus/hephaestus/actions/setup-go@main
@@ -94,7 +94,7 @@ jobs:
           done
           echo 'mode: count' > build/coverage.out
           find build/test-results -name '*-coverage.out' -exec tail -n +2 {} \; >> build/coverage.out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: targets
           path: ${{ inputs.workdir }}build/

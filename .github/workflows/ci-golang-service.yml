@@ -97,7 +97,7 @@ jobs:
       make-shell: ${{ steps.config.outputs.make-shell }}
       test-target: ${{ steps.config.outputs.test-target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: config
@@ -191,7 +191,7 @@ jobs:
             echo "make-shell=$make_shell"
             echo "test-target=$test_target"
           } >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ inputs.workdir }}${{ steps.config.outputs.go-version-file }}
           cache: true
@@ -203,7 +203,7 @@ jobs:
     env:
       GOPRIVATE: ${{ inputs.goprivate }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Configure private modules
@@ -252,12 +252,12 @@ jobs:
               git -C "../$repo" checkout "$ref"
             fi
           done <<< "$repos"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ inputs.workdir }}${{ needs.setup.outputs.go-version-file }}
           cache: true
           cache-dependency-path: ${{ inputs.workdir }}${{ needs.setup.outputs.cache-dependency-path }}
-      - uses: golangci/golangci-lint-action@v7
+      - uses: golangci/golangci-lint-action@v9
         if: needs.setup.outputs.go-mode == 'module'
         with:
           version: latest
@@ -283,7 +283,7 @@ jobs:
     env:
       GOPRIVATE: ${{ inputs.goprivate }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Configure private modules
@@ -332,7 +332,7 @@ jobs:
               git -C "../$repo" checkout "$ref"
             fi
           done <<< "$repos"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ inputs.workdir }}${{ needs.setup.outputs.go-version-file }}
           cache: true
@@ -376,7 +376,7 @@ jobs:
       project: ${{ steps.version.outputs.project }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Configure private modules
@@ -425,7 +425,7 @@ jobs:
               git -C "../$repo" checkout "$ref"
             fi
           done <<< "$repos"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: ${{ inputs.workdir }}${{ needs.setup.outputs.go-version-file }}
           cache: true
@@ -481,7 +481,7 @@ jobs:
           MAKE_SHELL: ${{ needs.setup.outputs.make-shell }}
           TEST_TARGET: ${{ needs.setup.outputs.test-target }}
         run: make SHELL="$MAKE_SHELL" "$TEST_TARGET"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: targets
           path: ${{ inputs.workdir }}${{ needs.setup.outputs.artifact-path }}
